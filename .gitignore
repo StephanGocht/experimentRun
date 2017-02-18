@@ -1,2 +1,4 @@
+compbench.egg-info
 compbench.sublime-project
 compbench.sublime-workspace
+*/__pycache__

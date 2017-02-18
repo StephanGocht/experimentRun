@@ -1,0 +1,26 @@
+{
+    "limits": {
+        "time": "5m",
+        "memory": "8g"
+    },
+
+    "tools":[
+        // compbench.FindZipedFiles(${zip_file}),
+        "example.helper.MultiAndNamedArgs('asdf')",
+        "example.helper.MultiAndNamedArgs('${tool}')",
+        "example.helper.MultiAndNamedArgs('asdf',1,2)",
+        "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
+        "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
+    ],
+
+    "default_configuration":{
+        "zip_file":"~/ma/benchmarks/bla.zip"
+    },
+
+    "configurations":[
+    {
+        "tool": "tool_to_bench.py",
+        "parameters": ["-n", "-r 0.5"]
+    }
+    ]
+}
