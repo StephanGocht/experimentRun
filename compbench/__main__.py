@@ -5,7 +5,7 @@ import os
 import re
 import ast
 from pydoc import locate
-from .tools import Tool
+from . import tools
 
 sys.path.append(os.getcwd())
 
@@ -23,15 +23,19 @@ def loadClass(data):
             sys.exit("Failed to load class %s (value: %s)."
                      % (className, data))
 
-        if not issubclass(userClass, Tool):
+        if not issubclass(userClass, tools.Tool):
             sys.exit("Failed to load class %s: Not inherited from "
                      "compbench.tools.Tool."
                      % (className))
 
         if parameterType == '(':
-            parameterString = '({},)'.format(parameterString)
-            parameter = ast.literal_eval(parameterString)
-            userClass(*parameter)
+            if not parameterString or parameterString.isspace():
+                userClass()
+            else:
+                print(">", parameterString, "<")
+                parameterString = '({},)'.format(parameterString)
+                parameter = ast.literal_eval(parameterString)
+                userClass(*parameter)
         elif parameterType == '{':
             parameterString = '{%s}' % (parameterString)
             parameter = ast.literal_eval(parameterString)
@@ -45,7 +49,8 @@ def removeComments(text):
     return re.sub(r"(^|\n)\s*//[^\n]*", "", text)
 
 
-def verifyJson(jsonPath):
+def loadJson(jsonPath):
+    config = None
     with open(jsonPath, 'r') as jsonFile:
         text = removeComments(jsonFile.read())
         try:
@@ -55,9 +60,7 @@ def verifyJson(jsonPath):
                      % (jsonPath, e.lineno, e.colno, e.msg))
 
     for key, value in config.items():
-        if key == "limits":
-            pass
-        elif key == "default_configuration":
+        if key == "default_configuration":
             pass
         elif key == "tools":
             for data in value:
@@ -70,6 +73,7 @@ def verifyJson(jsonPath):
                 pass
         else:
             print("Warning: Ignoring invalid toplevel key: \"%s\"." % (key))
+    return config
 
     # print(json.dumps(data, indent=4))
 
@@ -85,8 +89,7 @@ def main():
         help="check the provided json file")
     args = parser.parse_args()
 
-    if args.check:
-        verifyJson(args.json)
+    tools.runAll(loadJson(args.json))
 
 
 if __name__ == "__main__":

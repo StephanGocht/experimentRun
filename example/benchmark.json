@@ -1,26 +1,35 @@
 {
-    "limits": {
-        "time": "5m",
-        "memory": "8g"
-    },
-
     "tools":[
         // compbench.FindZipedFiles(${zip_file}),
-        "example.helper.MultiAndNamedArgs('asdf')",
-        "example.helper.MultiAndNamedArgs('${tool}')",
-        "example.helper.MultiAndNamedArgs('asdf',1,2)",
-        "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
-        "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
+        // "example.helper.MultiAndNamedArgs('asdf')",
+        // "example.helper.MultiAndNamedArgs('${tool}')",
+        // "example.helper.MultiAndNamedArgs('asdf',1,2)",
+        // "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
+        // "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
+        // "compbench.tools.PrintCurrentJson()",
+        "compbench.tools.Run()"
     ],
 
     "default_configuration":{
-        "zip_file":"~/ma/benchmarks/bla.zip"
+        "tools":[
+            "compbench.tools.PrintCurrentJson()"
+        ],
+        "zip_file":"~/ma/benchmarks/bla.zip",
+        "limits": {
+            "time": "5m",
+            "memory": "8g"
+        }
+        //"parameters": {"%expload": ["-s"]}
     },
 
     "configurations":[
     {
         "tool": "tool_to_bench.py",
-        "parameters": ["-n", "-r 0.5"]
+        "deepSetting": {
+            "parameters": {"%expload": ["-n", "-r 0.5"]}
+        },
+
+        "numbers": {"%expload": [1,2,3]}
     }
     ]
 }
