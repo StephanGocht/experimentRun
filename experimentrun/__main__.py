@@ -3,45 +3,9 @@ import json
 import sys
 import os
 import re
-import ast
-from pydoc import locate
-from . import tools
+from . import framework
 
 sys.path.append(os.getcwd())
-
-
-def loadClass(data):
-    match = re.match(r"([^\(\{]*)(([\{\(])(.*)[\)\}])?\s*$", data)
-
-    if (match):
-        className = match.group(1)
-        parameterType = match.group(3)
-        parameterString = match.group(4)
-
-        userClass = locate(className)
-        if (userClass is None):
-            sys.exit("Failed to load class %s (value: %s)."
-                     % (className, data))
-
-        if not issubclass(userClass, tools.Tool):
-            sys.exit("Failed to load class %s: Not inherited from "
-                     "compbench.tools.Tool."
-                     % (className))
-
-        if parameterType == '(':
-            if not parameterString or parameterString.isspace():
-                userClass()
-            else:
-                print(">", parameterString, "<")
-                parameterString = '({},)'.format(parameterString)
-                parameter = ast.literal_eval(parameterString)
-                userClass(*parameter)
-        elif parameterType == '{':
-            parameterString = '{%s}' % (parameterString)
-            parameter = ast.literal_eval(parameterString)
-            userClass(**parameter)
-    else:
-        sys.exit("Failed parse class (value: %s)." % (data))
 
 
 def removeComments(text):
@@ -63,8 +27,7 @@ def loadJson(jsonPath):
         if key == "default_configuration":
             pass
         elif key == "tools":
-            for data in value:
-                loadClass(data)
+            pass
         elif key == "configurations":
             if type(value) is not list:
                 sys.exit("The entrie for \"configurations\" should be a list, "
@@ -89,7 +52,7 @@ def main():
         help="check the provided json file")
     args = parser.parse_args()
 
-    tools.runAll(loadJson(args.json))
+    framework.bootstrap(loadJson(args.json))
 
 
 if __name__ == "__main__":

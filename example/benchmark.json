@@ -7,12 +7,12 @@
         // "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
         // "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
         // "compbench.tools.PrintCurrentJson()",
-        "experimentrun.tools.Run()"
+        "experimentrun.tools.ExploadNBootstrap()"
     ],
 
     "default_configuration":{
         "tools":[
-            "compbench.tools.PrintCurrentJson()"
+            "experimentrun.tools.PrintCurrentJson()"
         ],
         "zip_file":"~/ma/benchmarks/bla.zip",
         "limits": {

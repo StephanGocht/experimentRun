@@ -3,30 +3,20 @@ import sys
 from enum import Enum
 
 from . import json_names
-
-listOfTopLevelTools = list()
-config = None
-
-
-def runAll(conf):
-    global config
-    config = conf
-    for tool in listOfTopLevelTools:
-        tool.run()
+from . import framework
 
 
 class Tool(object):
     def __init__(self, priority=0):
-        listOfTopLevelTools.append(self)
-        print("Registered new Tool: %s" % (self.__class__.__name__))
         self.priority = priority
+
+    def setup(self, metadata):
+        print("Registered new Tool: %s" % (self.__class__.__name__))
+        metadata.registration.append(self)
+        self.config = metadata.config
 
     def run(self):
         pass
-
-    @property
-    def config(self):
-        return config
 
 
 class PrintCurrentJson(Tool):
@@ -100,9 +90,9 @@ def exploadConfig(config):
     return (ExploadState.normal, config)
 
 
-class Run(Tool):
+class ExploadNBootstrap(Tool):
     def __init__(self):
-        super(Run, self).__init__(self)
+        super(ExploadNBootstrap, self).__init__(self)
 
     def run(self):
         for config in self.config["configurations"]:
@@ -110,10 +100,7 @@ class Run(Tool):
                 self.config["default_configuration"], config)
             _, confs = exploadConfig(config)
             for conf in confs:
-                print("")
-                print("====")
-                print("")
-                print(json.dumps(conf, indent=4))
+                framework.bootstrap(conf)
 
 
 class SearchFilesNames(Tool):
