@@ -16,3 +16,17 @@ You need:
 	* setup
 	* run
 	* finalize
+
+Installation
+----
+
+Download the repository and change to the project root directory (You should
+see a setup.py). Run
+```pip install experimentrun```
+
+For instalation during development
+```pip install -e experimentrun```
+
+Run the tool
+----
+```python -m experimentrun```

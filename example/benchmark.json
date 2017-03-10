@@ -7,7 +7,7 @@
         // "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
         // "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
         // "compbench.tools.PrintCurrentJson()",
-        "compbench.tools.Run()"
+        "experimentrun.tools.Run()"
     ],
 
     "default_configuration":{

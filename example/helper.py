@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
-from compbench.tools import Tool
+from experimentrun.tools import Tool
 
 
 class LoadFile(Tool):
