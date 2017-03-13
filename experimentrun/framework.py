@@ -38,7 +38,7 @@ class Metadata(object):
                 if not parameterString or parameterString.isspace():
                     instance = userClass()
                 else:
-                    print(">", parameterString, "<")
+                    print("dbg: parameter >", parameterString, "<")
                     parameterString = '({},)'.format(parameterString)
                     parameter = ast.literal_eval(parameterString)
                     instance = userClass(*parameter)
@@ -54,6 +54,6 @@ class Metadata(object):
 
 def bootstrap(config):
     metadata = Metadata(config)
-    for classString in config["tools"]:
+    for classString in config.get("tools", list()):
         metadata.loadAndAddTool(classString)
     metadata.runAll()

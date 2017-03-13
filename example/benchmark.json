@@ -10,26 +10,32 @@
         "experimentrun.tools.ExploadNBootstrap()"
     ],
 
-    "default_configuration":{
-        "tools":[
-            "experimentrun.tools.PrintCurrentJson()"
-        ],
-        "zip_file":"~/ma/benchmarks/bla.zip",
-        "limits": {
-            "time": "5m",
-            "memory": "8g"
-        }
-        //"parameters": {"%expload": ["-s"]}
-    },
+    // "default_configuration":{
+    //     "tools":[
+    //         "experimentrun.tools.PrintCurrentJson()"
+    //     ],
+    //     "zip_file":"~/ma/benchmarks/bla.zip",
+    //     "limits": {
+    //         "time": "5m",
+    //         "memory": "8g"
+    //     }
+    //     //"parameters": {"%explode": ["-s"]}
+    // },
 
     "configurations":[
     {
-        "tool": "tool_to_bench.py",
-        "deepSetting": {
-            "parameters": {"%expload": ["-n", "-r 0.5"]}
-        },
-
-        "numbers": {"%expload": [1,2,3]}
+        "tools":[
+            "experimentrun.tools.RunShell('parallel < test', 'forLoopTime1')",
+            "experimentrun.tools.PrintCurrentJson()"
+        ],
+        "%limits": {
+            // limit to processor time in seconds [softlimit,hardlimit]
+            // "RLIMIT_CPU":[2,3],
+            // Memory limit in byte
+            // "RLIMIT_VMEM":[1000024,1000024],
+            // limit to wall clock time
+            // "timeout": 40
+        }
     }
     ]
 }
