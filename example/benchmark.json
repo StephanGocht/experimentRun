@@ -25,7 +25,16 @@
     "configurations":[
     {
         "tools":[
-            "experimentrun.tools.RunShell('parallel < test', 'forLoopTime1')",
+            // "helper.MultiAndNamedArgs('${tool}')",
+            // "experimentrun.tools.WriteConfigToFile('test.json')",
+            {
+                "name":"experimentrun.tools.RunShell",
+                "parameters": {
+                    "command":"echo hallo",
+                    "timesTo":"time",
+                    "externalUsedConfig":"carj.json"
+                }
+            },
             "experimentrun.tools.PrintCurrentJson()"
         ],
         "%limits": {

@@ -1,27 +1,11 @@
 import argparse
-import json
 import sys
 import os
-import re
 from . import framework
-
-sys.path.append(os.getcwd())
-
-
-def removeComments(text):
-    """Remove lines starting with //"""
-    return re.sub(r"(^|\n)\s*//[^\n]*", "", text)
 
 
 def loadJson(jsonPath):
-    config = None
-    with open(jsonPath, 'r') as jsonFile:
-        text = removeComments(jsonFile.read())
-        try:
-            config = json.loads(text)
-        except json.JSONDecodeError as e:
-            sys.exit("Error in json file %s:%d:%d: %s"
-                     % (jsonPath, e.lineno, e.colno, e.msg))
+    config = framework.loadJson(jsonPath)
 
     for key, value in config.items():
         if key == "default_configuration":
@@ -52,6 +36,7 @@ def main():
         help="check the provided json file")
     args = parser.parse_args()
 
+    sys.path.append(os.path.dirname(args.json))
     framework.bootstrap(loadJson(args.json))
 
 

@@ -11,5 +11,8 @@ setuptools.setup(
     classifiers=[
         'Development Status :: 1 - Planning',
         'License :: OSI Approved :: MIT License'
+    ],
+    install_requires=[
+        "jsonpointer"
     ]
 )
