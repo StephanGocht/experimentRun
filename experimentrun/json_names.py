@@ -14,3 +14,8 @@ limitsConfig = JsonName(
     r"/%limits",
     r'This is used to limit commands executed with the RunShell tool.'
     r'Usage: "%limits":{"RLIMIT_CPU":[5,6]}')
+
+evaluate = JsonName(
+    r"%eval",
+    r'This is used to indicate you want to eval a python expression'
+    r'Usage: "YourProperty": {"%eval":"list(range(3))"}')

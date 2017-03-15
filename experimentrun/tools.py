@@ -10,7 +10,7 @@ import re
 
 import jsonpointer
 
-from multiprocessing import Pool
+import multiprocessing
 
 from . import json_names
 from . import framework
@@ -47,12 +47,15 @@ class Tool(object):
 
     def substitute(self, text):
         """Substitute text with data from the json file."""
-        pattern = re.compile(r"(.*)\${([^{}]*)}(.*)")
+        pattern = re.compile(r"(.*)(\$|%){([^{}]*)}(.*)")
         while True:
             match = pattern.match(text)
             if (match):
-                replacement = self.access(match.group(2))
-                text = match.group(1) + replacement + match.group(3)
+                if match.group(2) == "$":
+                    replacement = self.access(match.group(3))
+                elif match.group(2) == "%":
+                    replacement = eval(match.group(3))
+                text = match.group(1) + replacement + match.group(4)
             else:
                 break
         return text
@@ -111,27 +114,93 @@ def mergeConfig(default, additional):
         return result
 
 
-class ExploadNBootstrap(Tool):
-    def __init__(self):
+class Eval(Tool):
+    def __init__(self, basePtr=""):
         super().__init__()
+        self.basePtr = basePtr
+
+    def evaluate(self, data):
+        if isinstance(data, dict):
+            if json_names.evaluate.text in data:
+                print("found eval")
+                return eval(self.substitute(data[json_names.evaluate.text]))
+            else:
+                for key, value in data.items():
+                    print("eval", key)
+                    result = self.evaluate(value)
+                    if result is not None:
+                        data[key] = result
+
+        elif isinstance(data, list):
+            for idx, value in enumerate(data):
+                result = self.evaluate(value)
+                if result is not None:
+                    data[idx] = result
+
+        return None
 
     def run(self):
-        # TODO use multiproecssing.Pool.map to parallelize
-        # for cluster parallelism use http://stackoverflow.com/questions/5181949/using-the-multiprocessing-module-for-cluster-computing
-        # p = psutil.Process()
-        # p.cpu_affinity([1])
+        self.evaluate(self.access(self.basePtr))
+
+
+class ExploadNBootstrap(Tool):
+    processor = None
+
+    def __init__(self, settings=None, parallel=False, processors=None):
+        super().__init__()
+        self.settings = settings
+        self.parallel = parallel
+        self.processors = processors
+        print("Use Processors: ", self.processors)
+
+    def initialize(processors):
+        if processors is not None:
+            processorId = processors.get()
+            process = psutil.Process()
+            process.cpu_affinity([processorId])
+            print("initialized process")
+
+    def doWork(config, cwd):
+        os.chdir(cwd)
+        return framework.bootstrap(config)
+
+    def run(self):
+        if self.settings is not None:
+            setting = self.access(self.settings)
+            self.parallel = setting.get("parallel", None)
+            self.processors = setting.get("processors", None)
 
         for config in self.config.get("configurations", list()):
             config = mergeConfig(
                 self.config.get("default_configuration", None), config)
 
-            runResults = list()
-
             confs = framework.explodeConfig(config)
             cwd = os.getcwd()
-            for conf in confs:
-                os.chdir(cwd)
-                runResults.append(framework.bootstrap(conf))
+
+            if not self.parallel:
+                runResults = [
+                    ExploadNBootstrap.doWork(conf, cwd)
+                    for conf in confs]
+            else:
+
+                if self.processors is None:
+                    queue = None
+                    numProcessors = None  # use default i.e. num procs
+                else:
+                    numProcessors = len(self.processors)
+                    manager = multiprocessing.Manager()
+                    queue = manager.Queue()
+                    for i in self.processors:
+                        queue.put(i)
+
+                # for cluster parallelism use http://stackoverflow.com/questions/5181949/using-the-multiprocessing-module-for-cluster-computing
+                p = multiprocessing.Pool(
+                    processes=numProcessors,
+                    initializer=ExploadNBootstrap.initialize,
+                    initargs=(queue,))
+                runResults = p.starmap(
+                    ExploadNBootstrap.doWork,
+                    [(conf, cwd) for conf in confs])
 
             self.config["runResults"] = runResults
 
@@ -241,7 +310,6 @@ class MakeAndCdTempDir(Tool):
             if not os.path.exists(self.prefix):
                 os.makedirs(self.prefix)
             path = self.prefix
-        print("changed directory to", path)
         os.chdir(path)
 
 
