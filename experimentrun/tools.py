@@ -52,9 +52,9 @@ class Tool(object):
             match = pattern.match(text)
             if (match):
                 if match.group(2) == "$":
-                    replacement = self.access(match.group(3))
+                    replacement = str(self.access(match.group(3)))
                 elif match.group(2) == "%":
-                    replacement = eval(match.group(3))
+                    replacement = str(eval(match.group(3)))
                 text = match.group(1) + replacement + match.group(4)
             else:
                 break
@@ -143,6 +143,13 @@ class Eval(Tool):
         self.evaluate(self.access(self.basePtr))
 
 
+class ExportCSV(Tool):
+    def run(self):
+        print("systemTime", ";", "userTime")
+        for result in self.config["runResults"]:
+            print(result["timeExecIncPhp"]["systemTime"], ";", result["timeExecIncPhp"]["userTime"])
+
+
 class ExploadNBootstrap(Tool):
     processor = None
 
@@ -170,7 +177,9 @@ class ExploadNBootstrap(Tool):
             self.parallel = setting.get("parallel", None)
             self.processors = setting.get("processors", None)
 
+        runResults = list()
         for config in self.config.get("configurations", list()):
+            print("got one")
             config = mergeConfig(
                 self.config.get("default_configuration", None), config)
 
@@ -178,9 +187,9 @@ class ExploadNBootstrap(Tool):
             cwd = os.getcwd()
 
             if not self.parallel:
-                runResults = [
+                runResults.extend([
                     ExploadNBootstrap.doWork(conf, cwd)
-                    for conf in confs]
+                    for conf in confs])
             else:
 
                 if self.processors is None:
@@ -198,11 +207,11 @@ class ExploadNBootstrap(Tool):
                     processes=numProcessors,
                     initializer=ExploadNBootstrap.initialize,
                     initargs=(queue,))
-                runResults = p.starmap(
+                runResults.extend(p.starmap(
                     ExploadNBootstrap.doWork,
-                    [(conf, cwd) for conf in confs])
+                    [(conf, cwd) for conf in confs]))
 
-            self.config["runResults"] = runResults
+        self.config["runResults"] = runResults
 
 
 class RunShell(Tool):
@@ -311,6 +320,7 @@ class MakeAndCdTempDir(Tool):
                 os.makedirs(self.prefix)
             path = self.prefix
         os.chdir(path)
+        self.config["path"] = path
 
 
 class SearchFilesNames(Tool):
