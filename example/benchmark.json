@@ -24,27 +24,37 @@
 
     "configurations":[
     {
+        "conf": {
+            "%explode":
+            [
+                {"x": 1, "z":{"%explode":["z1","z2"]}},{"x": 2}
+            ]
+        },
+        "someValue":{
+            "%link":"/conf/z"
+        },
         "tools":[
             // "helper.MultiAndNamedArgs('${tool}')",
             // "experimentrun.tools.WriteConfigToFile('test.json')",
-            {
-                "name":"experimentrun.tools.RunShell",
-                "parameters": {
-                    "command":"echo hallo",
-                    "timesTo":"time",
-                    "externalUsedConfig":"carj.json"
-                }
-            },
+            "experimentrun.tools.ResolveLinks()",
             "experimentrun.tools.PrintCurrentJson()"
-        ],
-        "%limits": {
+            // {
+            //     "name":"experimentrun.tools.RunShell",
+            //     "parameters": {
+            //         "command":"echo hallo",
+            //         "timesTo":"/time",
+            //         "externalUsedConfig":"carj.json"
+            //     }
+            // }
+        ]
+        // "%limits": {
             // limit to processor time in seconds [softlimit,hardlimit]
             // "RLIMIT_CPU":[2,3],
             // Memory limit in byte
             // "RLIMIT_VMEM":[1000024,1000024],
             // limit to wall clock time
             // "timeout": 40
-        }
+        // }
     }
     ]
 }

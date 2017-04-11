@@ -19,3 +19,8 @@ evaluate = JsonName(
     r"%eval",
     r'This is used to indicate you want to eval a python expression'
     r'Usage: "YourProperty": {"%eval":"list(range(3))"}')
+
+link = JsonName(
+    r"%link",
+    r'This is used to indicate you want the value of another place in the json'
+    r'Usage: "YourProperty": {"%link":"/path/to/value"}')

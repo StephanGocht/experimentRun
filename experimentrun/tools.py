@@ -143,11 +143,46 @@ class Eval(Tool):
         self.evaluate(self.access(self.basePtr))
 
 
+class ResolveLinks(Tool):
+    def __init__(self, basePtr=""):
+        super().__init__()
+        self.basePtr = basePtr
+
+    def recurse(self, data):
+        if isinstance(data, dict):
+            key = json_names.link.text
+            if key in data:
+                try:
+                    return (True, self.access(
+                        self.substitute(
+                            data[key])))
+                except KeyError:
+                    return (True, None)
+            else:
+                for key, value in data.items():
+                    replaced, result = self.recurse(value)
+                    if replaced:
+                        data[key] = result
+
+        elif isinstance(data, list):
+            for idx, value in enumerate(data):
+                replaced, result = self.recurse(value)
+                if replaced:
+                    data[idx] = result
+
+        return (False, None)
+
+    def run(self):
+        self.recurse(self.access(self.basePtr))
+
+
 class ExportCSV(Tool):
     def run(self):
         print("systemTime", ";", "userTime")
         for result in self.config["runResults"]:
-            print(result["timeExecIncPhp"]["systemTime"], ";", result["timeExecIncPhp"]["userTime"])
+            print(
+                result["timeExecIncPhp"]["systemTime"], ";",
+                result["timeExecIncPhp"]["userTime"])
 
 
 class ExploadNBootstrap(Tool):

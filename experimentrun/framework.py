@@ -128,7 +128,14 @@ def _explodeConfig(config, explodeString):
                         "Tried to expload value but no list was provided."
                         "Got '%s' instead" % value)
                 else:
-                    return (ExploadState.exploaded, value)
+                    variants = list()
+                    for entry in value:
+                        state, subConfig = _explodeConfig(entry, explodeString)
+                        if (state == ExploadState.exploaded):
+                            variants.extend(subConfig)
+                        else:
+                            variants.append(subConfig)
+                    return (ExploadState.exploaded, variants)
 
             else:
                 state, subConfig = _explodeConfig(value, explodeString)
