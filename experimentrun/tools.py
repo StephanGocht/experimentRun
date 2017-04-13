@@ -250,13 +250,13 @@ class ExplodeNBootstrap(Tool):
 
 
 class RunShell(Tool):
-    def __init__(self, command, timesTo=None,
+    def __init__(self, command, runInfoTo=None,
                  limitsConfig=json_names.limitsConfig.text,
                  externalUsedConfig=None):
         super().__init__()
         self.command = command
         self.limitsConfigPath = limitsConfig
-        self.timesTo = timesTo
+        self.runInfoTo = runInfoTo
 
         if externalUsedConfig is not None:
             self.wrtieConfig = self.registerSubTool(
@@ -315,11 +315,12 @@ class RunShell(Tool):
 
         self.readConfig.run()
 
-        if (self.timesTo is not None):
-            timeData = self.access(self.timesTo, createMissing=True)
+        if (self.runInfoTo is not None):
+            timeData = self.access(self.runInfoTo, createMissing=True)
             timeData["userTime"] = info.ru_utime - startInfo.ru_utime
             timeData["systemTime"] = info.ru_stime - startInfo.ru_stime
             timeData["wallClockTime"] = time.perf_counter() - startTime
+            timeData["returnCode"] = process.returncode
 
 
 class WriteConfigToFile(Tool):

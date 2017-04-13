@@ -37,7 +37,7 @@
         "conf": {
             "%explode":
             [
-                {"x": 1, "optionalRun": {"%link": "/runEcho"}},{"x": 2}
+                {"x": 1, "y":{"%explode":["y1", "y2"]}},{"x": 2}
             ]
         },
         "runEcho": {
