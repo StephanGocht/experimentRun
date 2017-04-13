@@ -12,6 +12,8 @@ import jsonpointer
 
 import multiprocessing
 
+from copy import deepcopy
+
 from . import json_names
 from . import framework
 
@@ -151,9 +153,9 @@ class ResolveLinks(Tool):
             key = json_names.link.text
             if key in data:
                 try:
-                    return (True, self.access(
-                        self.substitute(
-                            data[key])))
+                    refData = deepcopy(self.access(self.substitute(data[key])))
+                    _, result = self.recurse(refData)
+                    return (True, result)
                 except KeyError:
                     return (True, None)
             else:
@@ -168,7 +170,7 @@ class ResolveLinks(Tool):
                 if replaced:
                     data[idx] = result
 
-        return (False, None)
+        return (False, data)
 
     def run(self):
         self.recurse(self.access(self.basePtr))

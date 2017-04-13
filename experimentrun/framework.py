@@ -82,7 +82,6 @@ class Metadata(object):
 
 def bootstrap(config):
     metadata = Metadata(config)
-    print("bootstrap: ", config)
     while (len(metadata.config.get("tools", list())) > 0):
         constructor = metadata.config.get("tools").pop(0)
 

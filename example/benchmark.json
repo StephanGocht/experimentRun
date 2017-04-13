@@ -24,12 +24,6 @@
 
     "configurations":[
     {
-        "conf": {
-            "%explode":
-            [
-                {"x": 1, "z":{"%explode":["z1","z2"]}},{"x": 2}
-            ]
-        },
         "someValue":{
             "%link":"/conf/z"
         },
@@ -37,10 +31,15 @@
             // "helper.MultiAndNamedArgs('${tool}')",
             // "experimentrun.tools.WriteConfigToFile('test.json')",
             "experimentrun.tools.ResolveLinks()",
-            {"%link": "/runEcho"},
-            "experimentrun.tools.PrintCurrentJson()"
+            "experimentrun.tools.PrintCurrentJson()",
+            {"%link": "/conf/optionalRun"}
         ],
-
+        "conf": {
+            "%explode":
+            [
+                {"x": 1, "optionalRun": {"%link": "/runEcho"}},{"x": 2}
+            ]
+        },
         "runEcho": {
             "name":"experimentrun.tools.RunShell",
             "parameters": {
