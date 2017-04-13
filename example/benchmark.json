@@ -7,7 +7,7 @@
         // "example.helper.MultiAndNamedArgs{'name':'asdf','priority':2}",
         // "example.helper.LoadFile('/(.*)\\(.*)',('domain','problem'))"
         // "compbench.tools.PrintCurrentJson()",
-        "experimentrun.tools.ExploadNBootstrap()"
+        "experimentrun.tools.ExplodeNBootstrap()"
     ],
 
     // "default_configuration":{
@@ -37,16 +37,18 @@
             // "helper.MultiAndNamedArgs('${tool}')",
             // "experimentrun.tools.WriteConfigToFile('test.json')",
             "experimentrun.tools.ResolveLinks()",
+            {"%link": "/runEcho"},
             "experimentrun.tools.PrintCurrentJson()"
-            // {
-            //     "name":"experimentrun.tools.RunShell",
-            //     "parameters": {
-            //         "command":"echo hallo",
-            //         "timesTo":"/time",
-            //         "externalUsedConfig":"carj.json"
-            //     }
-            // }
-        ]
+        ],
+
+        "runEcho": {
+            "name":"experimentrun.tools.RunShell",
+            "parameters": {
+                "command":"echo hallo",
+                "timesTo":"/time",
+                "externalUsedConfig":"carj.json"
+            }
+        }
         // "%limits": {
             // limit to processor time in seconds [softlimit,hardlimit]
             // "RLIMIT_CPU":[2,3],

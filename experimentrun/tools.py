@@ -27,15 +27,13 @@ class Tool(object):
         self._subtools.append(subtool)
         return subtool
 
-    def setup(self, metadata, register=True):
+    def setup(self, metadata):
         # print("Registered new Tool: %s" % (self.__class__.__name__))
-        if register:
-            metadata.registration.append(self)
         self.metadata = metadata
 
         if hasattr(self, '_subtools'):
             for tool in self._subtools:
-                tool.setup(metadata, False)
+                tool.setup(metadata)
 
     @property
     def config(self):
@@ -185,7 +183,7 @@ class ExportCSV(Tool):
                 result["timeExecIncPhp"]["userTime"])
 
 
-class ExploadNBootstrap(Tool):
+class ExplodeNBootstrap(Tool):
     processor = None
 
     def __init__(self, settings=None, parallel=False, processors=None):
@@ -223,7 +221,7 @@ class ExploadNBootstrap(Tool):
 
             if not self.parallel:
                 runResults.extend([
-                    ExploadNBootstrap.doWork(conf, cwd)
+                    ExplodeNBootstrap.doWork(conf, cwd)
                     for conf in confs])
             else:
 
@@ -240,10 +238,10 @@ class ExploadNBootstrap(Tool):
                 # for cluster parallelism use http://stackoverflow.com/questions/5181949/using-the-multiprocessing-module-for-cluster-computing
                 p = multiprocessing.Pool(
                     processes=numProcessors,
-                    initializer=ExploadNBootstrap.initialize,
+                    initializer=ExplodeNBootstrap.initialize,
                     initargs=(queue,))
                 runResults.extend(p.starmap(
-                    ExploadNBootstrap.doWork,
+                    ExplodeNBootstrap.doWork,
                     [(conf, cwd) for conf in confs]))
 
         self.config["runResults"] = runResults

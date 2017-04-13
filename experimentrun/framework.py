@@ -4,6 +4,7 @@ import ast
 import json
 from enum import Enum
 from pydoc import locate
+from copy import deepcopy
 
 from . import tools
 from . import json_names
@@ -30,11 +31,7 @@ class Metadata(object):
         self.config = config
         self.registration = list()
 
-    def runAll(self):
-        for tool in self.registration:
-            tool.run()
-
-    def loadAndAddTool(self, className, parameter):
+    def loadAndRunTool(self, className, parameter):
         klass = locate(className)
         instance = None
         if (klass is None):
@@ -58,8 +55,9 @@ class Metadata(object):
                 (tuple.__name__, dict.__name__, parameter.__class__.__name__))
 
         instance.setup(self)
+        instance.run()
 
-    def loadAndAddToolFromString(self, classString):
+    def loadAndRunToolFromString(self, classString):
         match = re.match(r"([^\(\{]*)(([\{\(])(.*)[\)\}])?\s*$", classString)
 
         if (match):
@@ -77,22 +75,26 @@ class Metadata(object):
                 parameterString = '{%s}' % (parameterString)
                 parameter = ast.literal_eval(parameterString)
 
-            self.loadAndAddTool(className, parameter)
+            self.loadAndRunTool(className, parameter)
         else:
             sys.exit("Failed parse class (value: %s)." % (classString))
 
 
 def bootstrap(config):
     metadata = Metadata(config)
-    for constructor in config.get("tools", list()):
-        if isinstance(constructor, str):
-            metadata.loadAndAddToolFromString(constructor)
-        else:
-            metadata.loadAndAddTool(
-                constructor["name"],
-                constructor["parameters"])
+    print("bootstrap: ", config)
+    while (len(metadata.config.get("tools", list())) > 0):
+        constructor = metadata.config.get("tools").pop(0)
 
-    metadata.runAll()
+        if constructor is not None:
+            print(constructor)
+            if isinstance(constructor, str):
+                metadata.loadAndRunToolFromString(constructor)
+            else:
+                metadata.loadAndRunTool(
+                    constructor["name"],
+                    constructor["parameters"])
+
     return metadata.config
 
 
@@ -108,7 +110,7 @@ def _createExploadedCopies(exploadedSubEntries, config):
         exploadedResult = list()
         for value in valueList:
             for config in result:
-                copy = config.copy()
+                copy = deepcopy(config)
                 copy[key] = value
                 exploadedResult.append(copy)
 
