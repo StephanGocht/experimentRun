@@ -60,6 +60,18 @@ class Tool(object):
                 break
         return text
 
+    def setValue(self, accessorString, value):
+        pointer = jsonpointer.JsonPointer(accessorString)
+        doc = self.config
+        parts = pointer.parts
+        for part in parts[:-1]:
+            try:
+                doc = pointer.walk(doc, part)
+            except jsonpointer.JsonPointerException:
+                doc[part] = dict()
+                doc = doc[part]
+        doc[parts[-1]] = value
+
     def access(self, accessorString, createMissing=False):
         """Gets data from json using a jsonpointer.
            Array and Array element creation is not jey supported"""
@@ -122,11 +134,9 @@ class Eval(Tool):
     def evaluate(self, data):
         if isinstance(data, dict):
             if json_names.evaluate.text in data:
-                print("found eval")
                 return eval(self.substitute(data[json_names.evaluate.text]))
             else:
                 for key, value in data.items():
-                    print("eval", key)
                     result = self.evaluate(value)
                     if result is not None:
                         data[key] = result
@@ -329,6 +339,7 @@ class WriteConfigToFile(Tool):
         self.filename = filename
 
     def run(self):
+        self.filename = self.substitute(self.filename)
         with open(self.filename, 'w') as jsonFile:
             json.dump(self.config, jsonFile, indent=4)
 
