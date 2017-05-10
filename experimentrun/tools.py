@@ -3,6 +3,7 @@ import subprocess
 import psutil
 import time
 import resource
+import logging
 
 import tempfile
 import os
@@ -186,15 +187,6 @@ class ResolveLinks(Tool):
         self.recurse(self.access(self.basePtr))
 
 
-class ExportCSV(Tool):
-    def run(self):
-        print("systemTime", ";", "userTime")
-        for result in self.config["runResults"]:
-            print(
-                result["timeExecIncPhp"]["systemTime"], ";",
-                result["timeExecIncPhp"]["userTime"])
-
-
 class ExplodeNBootstrap(Tool):
     processor = None
 
@@ -222,9 +214,13 @@ class ExplodeNBootstrap(Tool):
             self.parallel = setting.get("parallel", None)
             self.processors = setting.get("processors", None)
 
+        if self.config.get("configurations", list()) is not list:
+            logging.critical(
+                "The entrie for \"configurations\" should be a list, "
+                "i.e. use [{..},{..},..].")
+
         runResults = list()
         for config in self.config.get("configurations", list()):
-            print("got one")
             config = mergeConfig(
                 self.config.get("default_configuration", None), config)
 
@@ -306,8 +302,10 @@ class RunShell(Tool):
         startTime = time.perf_counter()
         startInfo = resource.getrusage(resource.RUSAGE_CHILDREN)
 
+        commandString = self.substitute(self.command)
+        logging.info('RunShell: %s', commandString)
         process = subprocess.Popen(
-            self.substitute(self.command),
+            commandString,
             shell=True,
             preexec_fn=self.setLimits,
             executable='/bin/bash')

@@ -2,6 +2,7 @@ import re
 import sys
 import ast
 import json
+import logging
 from enum import Enum
 from pydoc import locate
 from copy import deepcopy
@@ -86,7 +87,7 @@ def bootstrap(config):
         constructor = metadata.config.get("tools").pop(0)
 
         if constructor is not None:
-            print(constructor)
+            logging.debug('Load and running tool: %s', constructor)
             if isinstance(constructor, str):
                 metadata.loadAndRunToolFromString(constructor)
             else:
