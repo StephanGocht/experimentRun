@@ -4,6 +4,7 @@ import psutil
 import time
 import resource
 import logging
+import traceback
 
 import tempfile
 import os
@@ -96,6 +97,52 @@ class Tool(object):
 
     def run(self):
         pass
+
+
+class ExceptionHandler(Tool):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        self.metadata.exceptionHandler.append(self)
+
+    def handleExceptionOnRun(self, e):
+        """Overwrite this method to try to handle the exception e, which
+           canceled the execution of a single tool.
+           Returns True if the exception was handled and should not be
+           reraised, this causes later tools to go on normally"""
+        return False
+
+    def handleExceptionOnRunAll(self, e):
+        """Overwrite this method to try to handle the exception e, which
+           canceled the execution of following tools.
+           Returns True if the exception was handled and should not be
+           reraised."""
+        return False
+
+
+class ExceptionToConfigAndCancelToolExecution(ExceptionHandler):
+    def __init__(self, filename=None):
+        """ If filename is provided the config will be written to the specified
+        file.
+        """
+        super().__init__()
+        self.filename = filename
+
+    def handleExceptionOnRunAll(self, e):
+        logging.debug(traceback.format_exc())
+        info = dict()
+        info["name"] = type(e).__name__
+        info["message"] = str(e)
+        info["trace"] = traceback.format_exc()
+        self.config["exception"] = info
+
+        if self.filename is not None:
+            self.filename = self.substitute(self.filename)
+            with open(self.filename, 'w') as jsonFile:
+                json.dump(self.config, jsonFile, indent=4)
+
+        return True
 
 
 class PrintExplodedJsons(Tool):
@@ -195,7 +242,6 @@ class ExplodeNBootstrap(Tool):
         self.settings = settings
         self.parallel = parallel
         self.processors = processors
-        print("Use Processors: ", self.processors)
 
     def initialize(processors):
         if processors is not None:
@@ -213,11 +259,14 @@ class ExplodeNBootstrap(Tool):
             setting = self.access(self.settings)
             self.parallel = setting.get("parallel", None)
             self.processors = setting.get("processors", None)
+        logging.info("Using processors %s." % (str(self.processors)))
 
-        if self.config.get("configurations", list()) is not list:
+        configurations = self.config.get("configurations", list())
+        if not isinstance(configurations, list):
             logging.critical(
                 "The entrie for \"configurations\" should be a list, "
-                "i.e. use [{..},{..},..].")
+                "i.e. use [{..},{..},..]. Got %s" % (type(configurations)))
+            raise RuntimeError("Critical log")
 
         runResults = list()
         for config in self.config.get("configurations", list()):
@@ -252,18 +301,25 @@ class ExplodeNBootstrap(Tool):
                     ExplodeNBootstrap.doWork,
                     [(conf, cwd) for conf in confs]))
 
+            # reset working directory
+            os.chdir(cwd)
         self.config["runResults"] = runResults
+
+
+class NonZeroExitCodeException(Exception):
+    pass
 
 
 class RunShell(Tool):
     def __init__(self, command, runInfoTo=None,
                  limitsConfig=json_names.limitsConfig.text,
-                 externalUsedConfig=None):
+                 externalUsedConfig=None,
+                 requireNormalExit=False):
         super().__init__()
         self.command = command
         self.limitsConfigPath = limitsConfig
         self.runInfoTo = runInfoTo
-
+        self.requireNormalExit = requireNormalExit
         if externalUsedConfig is not None:
             self.wrtieConfig = self.registerSubTool(
                 WriteConfigToFile(externalUsedConfig))
@@ -312,16 +368,24 @@ class RunShell(Tool):
 
         try:
             timeout = self.access(self.limitsConfigPath)["timeout"]
+        except KeyError:
+            timeout = None
+
+        if timeout is None:
+            process.wait()
+        else:
             try:
                 process.wait(timeout)
             except subprocess.TimeoutExpired:
                 process.kill()
-        except KeyError:
-            process.wait()
 
         info = resource.getrusage(resource.RUSAGE_CHILDREN)
 
         self.readConfig.run()
+
+        if (self.requireNormalExit and process.returncode != 0):
+            raise NonZeroExitCodeException(
+                'During execution of ' + commandString)
 
         if (self.runInfoTo is not None):
             timeData = self.access(self.runInfoTo, createMissing=True)
@@ -364,6 +428,7 @@ class MakeAndCdTempDir(Tool):
             if not os.path.exists(self.prefix):
                 os.makedirs(self.prefix)
             path = self.prefix
+        logging.debug("cd to %s" % (path))
         os.chdir(path)
         self.config["path"] = path
 

@@ -31,6 +31,7 @@ class Metadata(object):
     def __init__(self, config, imports="experimentrun.tools"):
         self.config = config
         self.registration = list()
+        self.exceptionHandler = list()
 
     def loadAndRunTool(self, className, parameter):
         klass = locate(className)
@@ -56,7 +57,17 @@ class Metadata(object):
                 (tuple.__name__, dict.__name__, parameter.__class__.__name__))
 
         instance.setup(self)
-        instance.run()
+        try:
+            instance.run()
+        except Exception as e:
+            handled = False
+            for handler in self.exceptionHandler:
+                handled |= handler.handleExceptionOnRun(e)
+                if handled:
+                    break
+
+            if not handled:
+                raise
 
     def loadAndRunToolFromString(self, classString):
         match = re.match(r"([^\(\{]*)(([\{\(])(.*)[\)\}])?\s*$", classString)
@@ -80,21 +91,33 @@ class Metadata(object):
         else:
             sys.exit("Failed parse class (value: %s)." % (classString))
 
+    def runAllTools(self):
+        while (len(self.config.get("tools", list())) > 0):
+            constructor = self.config.get("tools").pop(0)
+
+            if constructor is not None:
+                logging.debug('Load and running tool: %s', constructor)
+                if isinstance(constructor, str):
+                    self.loadAndRunToolFromString(constructor)
+                else:
+                    self.loadAndRunTool(
+                        constructor["name"],
+                        constructor["parameters"])
+
 
 def bootstrap(config):
     metadata = Metadata(config)
-    while (len(metadata.config.get("tools", list())) > 0):
-        constructor = metadata.config.get("tools").pop(0)
+    try:
+        metadata.runAllTools()
+    except Exception as e:
+        handled = False
+        for handler in metadata.exceptionHandler:
+            handled |= handler.handleExceptionOnRunAll(e)
+            if handled:
+                break
 
-        if constructor is not None:
-            logging.debug('Load and running tool: %s', constructor)
-            if isinstance(constructor, str):
-                metadata.loadAndRunToolFromString(constructor)
-            else:
-                metadata.loadAndRunTool(
-                    constructor["name"],
-                    constructor["parameters"])
-
+        if not handled:
+            raise
     return metadata.config
 
 
