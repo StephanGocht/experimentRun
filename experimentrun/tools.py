@@ -210,12 +210,13 @@ class ResolveLinks(Tool):
         if isinstance(data, dict):
             key = json_names.link.text
             if key in data:
+                default = data.get("default", None)
                 try:
                     refData = deepcopy(self.access(self.substitute(data[key])))
                     _, result = self.recurse(refData)
                     return (True, result)
                 except KeyError:
-                    return (True, None)
+                    return (True, default)
             else:
                 for key, value in data.items():
                     replaced, result = self.recurse(value)

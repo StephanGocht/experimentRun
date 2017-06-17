@@ -37,6 +37,7 @@ class Metadata(object):
         klass = locate(className)
         instance = None
         if (klass is None):
+            logging.debug(sys.path)
             sys.exit("Failed to load class %s."
                      % (className))
 
@@ -91,11 +92,13 @@ class Metadata(object):
         else:
             sys.exit("Failed parse class (value: %s)." % (classString))
 
-    def runAllTools(self):
-        while (len(self.config.get("tools", list())) > 0):
-            constructor = self.config.get("tools").pop(0)
+    def runConstructorList(self, constructorList):
+        while (len(constructorList) > 0):
+            constructor = constructorList.pop(0)
 
-            if constructor is not None:
+            if isinstance(constructor, list):
+                self.runConstructorList(constructor)
+            elif constructor is not None:
                 logging.debug('Load and running tool: %s', constructor)
                 if isinstance(constructor, str):
                     self.loadAndRunToolFromString(constructor)
@@ -103,6 +106,9 @@ class Metadata(object):
                     self.loadAndRunTool(
                         constructor["name"],
                         constructor["parameters"])
+
+    def runAllTools(self):
+        self.runConstructorList(self.config.get("tools", list()))
 
 
 def bootstrap(config):

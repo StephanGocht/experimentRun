@@ -22,10 +22,10 @@ Installation
 
 Download the repository and change to the project root directory (You should
 see a setup.py). Run
-```pip install experimentrun```
+```pip install ./```
 
 For instalation during development
-```pip install -e experimentrun```
+```pip install -e ./```
 
 Run the tool
 ----
