@@ -13,6 +13,7 @@ setuptools.setup(
         'License :: OSI Approved :: MIT License'
     ],
     install_requires=[
-        "jsonpointer"
+        "jsonpointer",
+        "Pyro4"
     ]
 )

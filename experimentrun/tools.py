@@ -13,6 +13,8 @@ import re
 import jsonpointer
 
 import multiprocessing
+import Pyro4
+import threading
 
 from copy import deepcopy
 
@@ -234,14 +236,59 @@ class ResolveLinks(Tool):
         self.recurse(self.access(self.basePtr))
 
 
+class ClusterDispatcher(object):
+    def __init__(self, resultStorage):
+        self.resultStorage = resultStorage
+        self.storageLock = threading.Lock()
+
+        ns = Pyro4.locateNS()
+        self.aviableDispatchers = list()
+        self.freeDispatchers = list()
+
+        lookup = ns.list(metadata_all={"jobdispatcher"})
+        for name, uri in lookup.values():
+            proxy = Pyro4.Proxy(uri)
+            Pyro4.async(proxy)
+            self.aviableDispatchers.append(proxy)
+            self.freeDispatchers.append(proxy)
+
+        self.cv = threading.Condition()
+
+    def release(self, result, dispatcher):
+        with self.cv:
+            self.freeDispatchers.append(dispatcher)
+            self.cv.notify()
+        return result
+
+    def store(self, result):
+        with self.storageLock:
+            self.resultStorage.append(result)
+
+    def run(self, config, cwd):
+        with self.cv:
+            while len(self.freeDispatchers) == 0:
+                self.cv.wait()
+            dispatcher = self.freeDispatchers.pop()
+        dispatcher.run(config, cwd) \
+            .then(self.store) \
+            .then(self.release, dispatcher)
+
+    def wait(self):
+        with self.cv:
+            while len(self.freeDispatchers) != len(self.aviableDispatchers):
+                self.cv.wait()
+
+
 class ExplodeNBootstrap(Tool):
     processor = None
 
-    def __init__(self, settings=None, parallel=False, processors=None):
+    def __init__(self, settings=None, parallel=False, processors=None,
+                 cluster=False):
         super().__init__()
         self.settings = settings
         self.parallel = parallel
         self.processors = processors
+        self.cluster = cluster
 
     def initialize(processors):
         if processors is not None:
@@ -281,25 +328,30 @@ class ExplodeNBootstrap(Tool):
                     ExplodeNBootstrap.doWork(conf, cwd)
                     for conf in confs])
             else:
-
-                if self.processors is None:
-                    queue = None
-                    numProcessors = None  # use default i.e. num procs
+                if self.cluster:
+                    cp = ClusterDispatcher(runResults)
+                    for conf in confs:
+                        cp.run(conf, cwd)
+                    cp.wait()
                 else:
-                    numProcessors = len(self.processors)
-                    manager = multiprocessing.Manager()
-                    queue = manager.Queue()
-                    for i in self.processors:
-                        queue.put(i)
+                    if self.processors is None:
+                        queue = None
+                        numProcessors = None  # use default i.e. num procs
+                    else:
+                        numProcessors = len(self.processors)
+                        manager = multiprocessing.Manager()
+                        queue = manager.Queue()
+                        for i in self.processors:
+                            queue.put(i)
 
-                # for cluster parallelism use http://stackoverflow.com/questions/5181949/using-the-multiprocessing-module-for-cluster-computing
-                p = multiprocessing.Pool(
-                    processes=numProcessors,
-                    initializer=ExplodeNBootstrap.initialize,
-                    initargs=(queue,))
-                runResults.extend(p.starmap(
-                    ExplodeNBootstrap.doWork,
-                    [(conf, cwd) for conf in confs]))
+                    # for cluster parallelism use http://stackoverflow.com/questions/5181949/using-the-multiprocessing-module-for-cluster-computing
+                    p = multiprocessing.Pool(
+                        processes=numProcessors,
+                        initializer=ExplodeNBootstrap.initialize,
+                        initargs=(queue,))
+                    runResults.extend(p.starmap(
+                        ExplodeNBootstrap.doWork,
+                        [(conf, cwd) for conf in confs]))
 
             # reset working directory
             os.chdir(cwd)
