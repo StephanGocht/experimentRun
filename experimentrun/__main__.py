@@ -7,7 +7,7 @@ from . import framework
 
 def main():
     parser = argparse.ArgumentParser(
-        description="calculate X to the power of Y")
+        description="Run benchmarks")
     parser.add_argument(
         "json",
         help="Json file containing the benchmark configurations.")
