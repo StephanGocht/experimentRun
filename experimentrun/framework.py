@@ -140,7 +140,7 @@ def _createExploadedCopies(exploadedSubEntries, config):
         for value in valueList:
             for config in result:
                 copy = deepcopy(config)
-                copy[key] = value
+                copy[key] = deepcopy(value)
                 exploadedResult.append(copy)
 
         result = exploadedResult

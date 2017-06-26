@@ -25,11 +25,19 @@ def main():
         help="Be verbose",
         action="store_const", dest="loglevel", const=logging.INFO,
     )
+    parser.add_argument(
+        '-I', '--include',
+        action="append",
+        help='List of folders to add to path.',
+        default=list()
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)
 
     sys.path.append(os.path.abspath(os.path.dirname(args.json)))
+    for include in args.include:
+        sys.path.append(os.path.abspath(include))
     framework.bootstrap(framework.loadJson(args.json))
 
 

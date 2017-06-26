@@ -201,38 +201,67 @@ class Eval(Tool):
         self.evaluate(self.access(self.basePtr))
 
 
+class LoopInLinksException(Exception):
+    pass
+
+
 class ResolveLinks(Tool):
     def __init__(self, basePtr=""):
         super().__init__()
         self.basePtr = basePtr
 
-    def recurse(self, data):
-        if isinstance(data, dict):
-            key = json_names.link.text
-            if key in data:
-                default = data.get("default", None)
-                try:
-                    refData = deepcopy(self.access(self.substitute(data[key])))
-                    _, result = self.recurse(refData)
-                    return (True, result)
-                except KeyError:
-                    return (True, default)
+    def isLink(self, data, key):
+        if isinstance(data[key], dict):
+            linkText = json_names.link.text
+            if linkText in data[key]:
+                return True
+        return False
+
+    def resolveLink(self, data, key):
+        if "visited" in data[key]:
+            raise LoopInLinksException()
+        else:
+            data[key]["vistied"] = True
+
+        linkText = json_names.link.text
+        path = data[key][linkText]
+
+        pointer = jsonpointer.JsonPointer(self.substitute(path))
+        current = self.config
+        parts = pointer.parts
+        try:
+            for part in parts:
+                if self.isLink(current, part):
+                    self.resolveLink(current, part)
+                current = current[part]
+            self.search(current)
+            data[key] = current
+        except KeyError:
+            if "default" in data[key]:
+                data[key] = data[key]["default"]
             else:
-                for key, value in data.items():
-                    replaced, result = self.recurse(value)
-                    if replaced:
-                        data[key] = result
+                raise KeyError(path)
+
+    def search(self, data):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if self.isLink(data, key):
+                    self.resolveLink(data, key)
+                else:
+                    self.search(data[key])
 
         elif isinstance(data, list):
             for idx, value in enumerate(data):
-                replaced, result = self.recurse(value)
-                if replaced:
-                    data[idx] = result
-
-        return (False, data)
+                if self.isLink(data, idx):
+                    self.resolveLink(data, idx)
+                else:
+                    self.search(data[idx])
+        else:
+            # constant term nothing to be done here
+            pass
 
     def run(self):
-        self.recurse(self.access(self.basePtr))
+        self.search(self.access(self.basePtr))
 
 
 class ExplodeNBootstrap(Tool):
@@ -337,14 +366,14 @@ class RunShell(Tool):
         except KeyError:
             limitsConfig = None
 
-        self.limits = list()
+        self.limits = dict()
         if limitsConfig is not None:
             for key, value in limitsConfig.items():
                 if key.startswith("RLIMIT_"):
-                    self.limits.append((key, value))
+                    self.limits[key] = value
 
     def setLimits(self):
-        for key, value in self.limits:
+        for key, value in self.limits.items():
             try:
                 resource.setrlimit(getattr(resource, key), value)
             except AttributeError:
@@ -384,16 +413,37 @@ class RunShell(Tool):
 
         self.readConfig.run()
 
-        if (self.requireNormalExit and process.returncode != 0):
-            raise NonZeroExitCodeException(
-                'During execution of ' + commandString)
-
         if (self.runInfoTo is not None):
             timeData = self.access(self.runInfoTo, createMissing=True)
             timeData["userTime"] = info.ru_utime - startInfo.ru_utime
             timeData["systemTime"] = info.ru_stime - startInfo.ru_stime
             timeData["wallClockTime"] = time.perf_counter() - startTime
             timeData["returnCode"] = process.returncode
+
+        if (self.requireNormalExit and process.returncode != 0):
+            raise NonZeroExitCodeException(
+                'During execution of ' + commandString)
+
+
+class RunJava(RunShell):
+    def __init__(self, command, runInfoTo=None,
+                 limitsConfig=json_names.limitsConfig.text,
+                 externalUsedConfig=None,
+                 requireNormalExit=False):
+        command = "java -jar " + command
+        super().__init__(
+            command, runInfoTo,
+            limitsConfig,
+            externalUsedConfig,
+            requireNormalExit)
+
+    def loadLimits(self):
+        super().loadLimits()
+        if "RLIMIT_AS" in self.limits:
+            self.command = "java -jar -Xmx" \
+                + str(self.limits["RLIMIT_AS"][0]) \
+                + " " + self.command[10:]
+            del self.limits["RLIMIT_AS"]
 
 
 class WriteConfigToFile(Tool):
