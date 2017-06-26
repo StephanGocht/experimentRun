@@ -10,6 +10,8 @@ from copy import deepcopy
 from . import tools
 from . import json_names
 
+includes = list()
+
 
 def removeComments(text):
     """Remove lines starting with //"""

@@ -35,9 +35,11 @@ def main():
 
     logging.basicConfig(level=args.loglevel)
 
-    sys.path.append(os.path.abspath(os.path.dirname(args.json)))
+    framework.includes.append(os.path.dirname(args.json))
     for include in args.include:
-        sys.path.append(os.path.abspath(include))
+        framework.includes.append(os.path.abspath(include))
+
+    sys.path.extend(framework.includes)
     framework.bootstrap(framework.loadJson(args.json))
 
 

@@ -271,15 +271,18 @@ class ClusterDispatcher(object):
         self.resultStorage = resultStorage
         self.storageLock = threading.Lock()
 
+        logging.getLogger("Pyro4").setLevel(logging.WARN)
+        logging.getLogger("Pyro4.core").setLevel(logging.WARN)
         ns = Pyro4.locateNS()
-        self.aviableDispatchers = list()
+        self.aviableDispatchers = set()
         self.freeDispatchers = list()
 
         lookup = ns.list(metadata_all={"jobdispatcher"})
-        for name, uri in lookup.values():
+        for uri in lookup.values():
             proxy = Pyro4.Proxy(uri)
             Pyro4.async(proxy)
-            self.aviableDispatchers.append(proxy)
+            proxy.setIncludes(framework.includes)
+            self.aviableDispatchers.add(proxy)
             self.freeDispatchers.append(proxy)
 
         self.cv = threading.Condition()
@@ -294,6 +297,17 @@ class ClusterDispatcher(object):
         with self.storageLock:
             self.resultStorage.append(result)
 
+    def handleException(self, exception, config, cwd, dispatcher):
+        logging.error("Got Remote Exception: " + str(exception))
+
+        # todo: this might be improved, i.e. look for aviable servers
+        # now and then
+        # make sure that the program knows when to terminate
+        self.aviableDispatchers.remove(dispatcher)
+
+        # reshedule
+        self.run(config, cwd)
+
     def run(self, config, cwd):
         with self.cv:
             while len(self.freeDispatchers) == 0:
@@ -301,7 +315,12 @@ class ClusterDispatcher(object):
             dispatcher = self.freeDispatchers.pop()
         dispatcher.run(config, cwd) \
             .then(self.store) \
-            .then(self.release, dispatcher)
+            .then(self.release, dispatcher) \
+            .iferror(
+                (lambda config, cwd, dispatcher:
+                 lambda x: self.handleException(x, config, cwd, dispatcher)
+                )(config, cwd, dispatcher)
+            )
 
     def wait(self):
         with self.cv:
@@ -312,10 +331,9 @@ class ClusterDispatcher(object):
 class ExplodeNBootstrap(Tool):
     processor = None
 
-    def __init__(self, settings=None, parallel=False, processors=None,
+    def __init__(self, parallel=False, processors=None,
                  cluster=False):
         super().__init__()
-        self.settings = settings
         self.parallel = parallel
         self.processors = processors
         self.cluster = cluster
@@ -332,10 +350,6 @@ class ExplodeNBootstrap(Tool):
         return framework.bootstrap(config)
 
     def run(self):
-        if self.settings is not None:
-            setting = self.access(self.settings)
-            self.parallel = setting.get("parallel", None)
-            self.processors = setting.get("processors", None)
         logging.info("Using processors %s." % (str(self.processors)))
 
         configurations = self.config.get("configurations", list())
@@ -359,6 +373,7 @@ class ExplodeNBootstrap(Tool):
                     for conf in confs])
             else:
                 if self.cluster:
+                    print("runing on cluster")
                     cp = ClusterDispatcher(runResults)
                     for conf in confs:
                         cp.run(conf, cwd)
