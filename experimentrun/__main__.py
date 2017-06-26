@@ -29,7 +29,7 @@ def main():
 
     logging.basicConfig(level=args.loglevel)
 
-    sys.path.append(os.path.dirname(args.json))
+    sys.path.append(os.path.abspath(os.path.dirname(args.json)))
     framework.bootstrap(framework.loadJson(args.json))
 
 
