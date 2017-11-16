@@ -31,3 +31,10 @@ Run the tool
 ----
 ```python -m experimentrun```
 
+
+Misc
+----
+
+In case you want to retrive data as json and store it to mongoDB and then
+pick it up with pandas:
+https://medium.com/towards-data-science/mongodb-vs-pandas-5abe2c5ff6f3

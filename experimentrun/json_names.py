@@ -24,3 +24,8 @@ link = JsonName(
     r"%link",
     r'This is used to indicate you want the value of another place in the json'
     r'Usage: "YourProperty": {"%link":"/path/to/value"}')
+
+linkFile = JsonName(
+    r"%linkFile",
+    r'This is used to indicate you want the json of another file in here.'
+    r'Usage: "YourProperty": {"%linkFile":"/os/path/to/value"}')

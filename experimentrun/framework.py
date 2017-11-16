@@ -15,12 +15,17 @@ includes = list()
 
 def removeComments(text):
     """Remove lines starting with //"""
-    return re.sub(r"(^|\n)\s*//[^\n]*", "\n", text)
+    return re.sub(r"(^|\n)(\s*)//[^\n]*", "\g<1>\g<2>", text)
+
+def removeTrailingComma(text):
+    """Remove comma at end of line if it is the last item"""
+    return re.sub(r",(\s*\n\s*)([\]}])", "\g<1>\g<2>", text)
 
 
 def loadJson(jsonPath):
     with open(jsonPath, 'r') as jsonFile:
         text = removeComments(jsonFile.read())
+        text = removeTrailingComma(text)
         try:
             config = json.loads(text)
         except json.JSONDecodeError as e:
@@ -30,7 +35,7 @@ def loadJson(jsonPath):
 
 
 class Metadata(object):
-    def __init__(self, config, imports="experimentrun.tools"):
+    def __init__(self, config=dict(), imports="experimentrun.tools"):
         self.config = config
         self.registration = list()
         self.exceptionHandler = list()

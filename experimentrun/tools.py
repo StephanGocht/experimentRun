@@ -76,6 +76,21 @@ class Tool(object):
                 doc = doc[part]
         doc[parts[-1]] = value
 
+    def deleteEntry(self, accessorString):
+        pointer = jsonpointer.JsonPointer(accessorString)
+        doc = self.config
+        parts = pointer.parts
+        for part in parts[:-1]:
+            try:
+                doc = pointer.walk(doc, part)
+            except jsonpointer.JsonPointerException:
+                doc[part] = dict()
+                doc = doc[part]
+        del doc[parts[-1]]
+
+    def getValue(self, accessorString, createMissing=False):
+        return self.access(accessorString, createMissing)
+
     def access(self, accessorString, createMissing=False):
         """Gets data from json using a jsonpointer.
            Array and Array element creation is not jey supported"""
@@ -132,6 +147,7 @@ class ExceptionToConfigAndCancelToolExecution(ExceptionHandler):
         self.filename = filename
 
     def handleExceptionOnRunAll(self, e):
+        logging.info("Cought exception %s: %s"% (type(e).__name__, str(e)))
         logging.debug(traceback.format_exc())
         info = dict()
         info["name"] = type(e).__name__
@@ -219,6 +235,13 @@ class ResolveLinks(Tool):
                 return True
         return False
 
+    def isLinkFile(self, data, key):
+        if isinstance(data[key], dict):
+            linkText = json_names.linkFile.text
+            if linkText in data[key]:
+                return True
+        return False
+
     def resolveLink(self, data, key):
         if "visited" in data[key]:
             raise LoopInLinksException()
@@ -233,31 +256,41 @@ class ResolveLinks(Tool):
         parts = pointer.parts
         try:
             for part in parts:
+                part = pointer.get_part(current, part)
                 if self.isLink(current, part):
                     self.resolveLink(current, part)
                 current = current[part]
+
             self.search(current)
             data[key] = current
-        except KeyError:
+        except (KeyError, TypeError):
             if "default" in data[key]:
                 data[key] = data[key]["default"]
             else:
                 raise KeyError(path)
 
+    def loadData(self, data, key):
+        linkText = json_names.linkFile.text
+        file = data[key][linkText]
+        data[key] = framework.loadJson(file)
+        self.search(data[key])
+
+    def handleKey(self, data, key):
+        if self.isLink(data, key):
+            self.resolveLink(data, key)
+        elif self.isLinkFile(data, key):
+            self.loadData(data, key)
+        else:
+            self.search(data[key])
+
     def search(self, data):
         if isinstance(data, dict):
             for key, value in data.items():
-                if self.isLink(data, key):
-                    self.resolveLink(data, key)
-                else:
-                    self.search(data[key])
+                self.handleKey(data, key)
 
         elif isinstance(data, list):
             for idx, value in enumerate(data):
-                if self.isLink(data, idx):
-                    self.resolveLink(data, idx)
-                else:
-                    self.search(data[idx])
+                self.handleKey(data, idx)
         else:
             # constant term nothing to be done here
             pass
@@ -326,7 +359,6 @@ class ClusterDispatcher(object):
         with self.cv:
             while len(self.freeDispatchers) != len(self.aviableDispatchers):
                 self.cv.wait()
-
 
 class ExplodeNBootstrap(Tool):
     processor = None
