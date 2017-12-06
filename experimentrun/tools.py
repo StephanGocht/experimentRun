@@ -94,7 +94,10 @@ class Tool(object):
     def access(self, accessorString, createMissing=False):
         """Gets data from json using a jsonpointer.
            Array and Array element creation is not jey supported"""
-        pointer = jsonpointer.JsonPointer(accessorString)
+        if isinstance(accessorString, jsonpointer.JsonPointer):
+            pointer = accessorString
+        else:
+            pointer = jsonpointer.JsonPointer(accessorString)
         if not createMissing:
             try:
                 return pointer.resolve(self.config)
@@ -271,7 +274,7 @@ class ResolveLinks(Tool):
 
     def loadData(self, data, key):
         linkText = json_names.linkFile.text
-        file = data[key][linkText]
+        file = self.substitute(data[key][linkText])
         data[key] = framework.loadJson(file)
         self.search(data[key])
 
@@ -296,7 +299,12 @@ class ResolveLinks(Tool):
             pass
 
     def run(self):
-        self.search(self.access(self.basePtr))
+        ptr = jsonpointer.JsonPointer(self.basePtr)
+        if len(ptr.parts) > 0:
+            last = ptr.parts.pop()
+            self.handleKey(self.access(ptr), last)
+        else:
+            self.search(self.access(ptr))
 
 
 class ClusterDispatcher(object):

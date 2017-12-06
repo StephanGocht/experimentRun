@@ -5,6 +5,7 @@ import logging
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from experimentrun import framework
+from experimentrun import json_names
 
 
 def main():
@@ -42,7 +43,9 @@ def main():
         framework.includes.append(os.path.abspath(include))
 
     sys.path.extend(framework.includes)
-    framework.bootstrap(framework.loadJson(args.json))
+    config = framework.loadJson(args.json)
+    config[json_names.exrunConfDir.text] = str(os.path.dirname(args.json))
+    framework.bootstrap(config)
 
 
 if __name__ == "__main__":
