@@ -490,7 +490,7 @@ class RunShell(Tool):
         commandString = self.substitute(self.command)
         logging.info('RunShell: %s', commandString)
         process = subprocess.Popen(
-            commandString,
+            "exec " + commandString,
             shell=True,
             preexec_fn=self.setLimits,
             executable='/bin/bash')
@@ -529,7 +529,7 @@ class RunJava(RunShell):
                  limitsConfig=json_names.limitsConfig.text,
                  externalUsedConfig=None,
                  requireNormalExit=False):
-        command = "java -jar " + command
+        command = "exec java -jar " + command
         super().__init__(
             command, runInfoTo,
             limitsConfig,
@@ -539,7 +539,7 @@ class RunJava(RunShell):
     def loadLimits(self):
         super().loadLimits()
         if "RLIMIT_AS" in self.limits:
-            self.command = "java -jar -Xmx" \
+            self.command = "exec java -jar -Xmx" \
                 + str(self.limits["RLIMIT_AS"][0]) \
                 + " " + self.command[10:]
             del self.limits["RLIMIT_AS"]
