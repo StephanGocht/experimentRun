@@ -12,6 +12,11 @@ setuptools.setup(
         'Development Status :: 1 - Planning',
         'License :: OSI Approved :: MIT License'
     ],
+    entry_points={
+        'console_scripts': [
+            'exrun=experimentrun.__main__:main',
+        ]
+    },
     install_requires=[
         "jsonpointer",
         "Pyro4"
