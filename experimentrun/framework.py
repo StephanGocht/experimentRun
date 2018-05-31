@@ -3,6 +3,7 @@ import sys
 import ast
 import json
 import logging
+import inspect
 from enum import Enum
 from pydoc import locate
 from copy import deepcopy
@@ -48,34 +49,61 @@ class Metadata(object):
             sys.exit("Failed to load class %s."
                      % (className))
 
-        if not issubclass(klass, tools.Tool):
-            sys.exit("Failed to load class %s: Not inherited from "
-                     "compbench.tools.Tool."
-                     % (klass.__name__))
+        if not inspect.isclass(klass):
+            if callable(klass):
+                try:
+                    if parameter is None:
+                        print(klass.__name__)
+                        klass(self)
+                    elif isinstance(parameter, tuple):
+                        klass(self,*parameter)
+                    elif isinstance(parameter, dict):
+                        klass(self,**parameter)
+                    else:
+                        raise TypeError(
+                            "For parameter 'parameter': Expected %s or %s but got %s" %
+                            (tuple.__name__, dict.__name__, parameter.__class__.__name__))
+                except Exception as e:
+                    handled = False
+                    for handler in self.exceptionHandler:
+                        handled |= handler.handleExceptionOnRun(e)
+                        if handled:
+                            break
 
-        if parameter is None:
-            instance = klass()
-        elif isinstance(parameter, tuple):
-            instance = klass(*parameter)
-        elif isinstance(parameter, dict):
-            instance = klass(**parameter)
+                    if not handled:
+                        raise
+            else:
+                sys.exit("Failed to load %s: Neither a class nor callable."
+                         % (klass.__name__))
         else:
-            raise TypeError(
-                "For parameter 'parameter': Expected %s or %s but got %s" %
-                (tuple.__name__, dict.__name__, parameter.__class__.__name__))
+            if not issubclass(klass, tools.Tool):
+                sys.exit("Failed to load class %s: Not inherited from "
+                         "compbench.tools.Tool."
+                         % (klass.__name__))
 
-        instance.setup(self)
-        try:
-            instance.run()
-        except Exception as e:
-            handled = False
-            for handler in self.exceptionHandler:
-                handled |= handler.handleExceptionOnRun(e)
-                if handled:
-                    break
+            if parameter is None:
+                instance = klass()
+            elif isinstance(parameter, tuple):
+                instance = klass(*parameter)
+            elif isinstance(parameter, dict):
+                instance = klass(**parameter)
+            else:
+                raise TypeError(
+                    "For parameter 'parameter': Expected %s or %s but got %s" %
+                    (tuple.__name__, dict.__name__, parameter.__class__.__name__))
 
-            if not handled:
-                raise
+            try:
+                instance.setup(self)
+                instance.run()
+            except Exception as e:
+                handled = False
+                for handler in self.exceptionHandler:
+                    handled |= handler.handleExceptionOnRun(e)
+                    if handled:
+                        break
+
+                if not handled:
+                    raise
 
     def loadAndRunToolFromString(self, classString):
         match = re.match(r"([^\(\{]*)(([\{\(])(.*)[\)\}])?\s*$", classString)

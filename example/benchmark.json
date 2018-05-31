@@ -24,15 +24,20 @@
 
     "configurations":[
     {
-        "someValue":{
-            "%link":"/conf/z"
-        },
         "tools":[
             // "helper.MultiAndNamedArgs('${tool}')",
             // "experimentrun.tools.WriteConfigToFile('test.json')",
             "experimentrun.tools.ResolveLinks()",
-            "experimentrun.tools.PrintCurrentJson()",
-            {"%link": "/conf/optionalRun"}
+            // "experimentrun.tools.PrintCurrentJson()",
+            "helper.doStuff{'test':3,'baa':'asdf'}",
+            {
+                "name":"helper.doStuff",
+                "parameters":{
+                    "test": 42,
+                    "foo": 10
+                }
+            }
+            // {"%link": "/conf/optionalRun"}
         ],
         "conf": {
             "%explode":

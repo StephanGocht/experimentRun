@@ -16,3 +16,10 @@ class MultiAndNamedArgs(Tool):
     def __init__(self, name, value=0, priority=0):
         super(MultiAndNamedArgs, self).__init__()
         print("Loaded LoadFile: %s, %d, %d" % (name, value, priority))
+
+
+class Test():
+    pass
+
+def doStuff(context, test, baa="baa", foo="foo"):
+    print("hi", test, baa, foo)
