@@ -27,16 +27,18 @@
         "tools":[
             // "helper.MultiAndNamedArgs('${tool}')",
             // "experimentrun.tools.WriteConfigToFile('test.json')",
-            "experimentrun.tools.ResolveLinks()",
+            // "experimentrun.tools.ResolveLinks()",
+            "experimentrun.tools.makeAndCdNestedTempDir('./results/')",
+            "experimentrun.tools.WriteConfigToFile('problem.json')",
             // "experimentrun.tools.PrintCurrentJson()",
-            "helper.doStuff{'test':3,'baa':'asdf'}",
-            {
-                "name":"helper.doStuff",
-                "parameters":{
-                    "test": 42,
-                    "foo": 10
-                }
-            }
+            // "helper.doStuff{'test':3,'baa':'asdf'}",
+            // {
+            //     "name":"helper.doStuff",
+            //     "parameters":{
+            //         "test": 42,
+            //         "foo": 10
+            //     }
+            // }
             // {"%link": "/conf/optionalRun"}
         ],
         "conf": {
@@ -45,14 +47,14 @@
                 {"x": 1, "y":{"%explode":["y1", "y2"]}},{"x": 2}
             ]
         },
-        "runEcho": {
-            "name":"experimentrun.tools.RunShell",
-            "parameters": {
-                "command":"echo hallo",
-                "timesTo":"/time",
-                "externalUsedConfig":"carj.json"
-            }
-        }
+        // "runEcho": {
+        //     "name":"experimentrun.tools.RunShell",
+        //     "parameters": {
+        //         "command":"echo hallo",
+        //         "timesTo":"/time",
+        //         "externalUsedConfig":"carj.json"
+        //     }
+        // }
         // "%limits": {
             // limit to processor time in seconds [softlimit,hardlimit]
             // "RLIMIT_CPU":[2,3],

@@ -9,6 +9,7 @@ import traceback
 import tempfile
 import os
 import re
+import random
 
 import jsonpointer
 
@@ -173,13 +174,35 @@ class PrintExplodedJsons(Tool):
     def run(self):
         print(json.dumps(framework.explodeConfig(self.config), indent=4))
 
-
 class PrintCurrentJson(Tool):
     def __init__(self):
         super().__init__()
 
     def run(self):
         print(json.dumps(self.config, indent=4))
+
+def writeCurrentJson(context, filename):
+    filename = context.substitute(filename)
+    with open(filename, 'w') as jsonFile:
+        json.dump(context.config, jsonFile, indent=4)
+
+class WriteConfigToFile(Tool):
+    def __init__(self, filename):
+        super().__init__()
+        self.filename = filename
+
+    def run(self):
+        writeCurrentJson(self, self.filename)
+
+WriteCurrentJson = WriteConfigToFile
+
+class ReplaceConfigFromFile(Tool):
+    def __init__(self, filename):
+        super().__init__()
+        self.filename = filename
+
+    def run(self):
+        self.config = framework.loadJson(self.filename)
 
 
 def mergeConfig(default, additional):
@@ -515,6 +538,7 @@ class RunShell(Tool):
                 process.wait(timeout)
             except subprocess.TimeoutExpired:
                 process.kill()
+                process.wait()
 
         info = resource.getrusage(resource.RUSAGE_CHILDREN)
 
@@ -553,25 +577,28 @@ class RunJava(RunShell):
             del self.limits["RLIMIT_AS"]
 
 
-class WriteConfigToFile(Tool):
-    def __init__(self, filename):
-        super().__init__()
-        self.filename = filename
+def makeAndCdTempDir(context, dir="./", prefix="", hasRandomPart=True , pathTo = "/path"):
+    if hasRandomPart:
+        path = tempfile.mkdtemp(prefix=prefix, dir=dir)
+    else:
+        if not os.path.exists(prefix):
+            os.makedirs(prefix)
+        path = self.prefix
+    logging.debug("cd to %s" % (path))
+    os.chdir(path)
+    context.setValue(pathTo, path)
 
-    def run(self):
-        self.filename = self.substitute(self.filename)
-        with open(self.filename, 'w') as jsonFile:
-            json.dump(self.config, jsonFile, indent=4)
+def makeAndCdNestedTempDir(context, root, depth = 3, pathTo = "/path"):
+    nesting = list()
+    charrange = ord('z') - ord('a')
+    for i in range(depth):
+        nesting.append(chr(ord('a') + random.randrange(charrange + 1)))
 
+    root = os.path.abspath(root)
+    path = os.path.join(root, *nesting)
+    os.makedirs(path, exist_ok = True)
 
-class ReplaceConfigFromFile(Tool):
-    def __init__(self, filename):
-        super().__init__()
-        self.filename = filename
-
-    def run(self):
-        self.config = framework.loadJson(self.filename)
-
+    makeAndCdTempDir(context, pathTo = pathTo, dir = path)
 
 class MakeAndCdTempDir(Tool):
     def __init__(self, prefix="", hasRandomPart=True):
@@ -580,16 +607,12 @@ class MakeAndCdTempDir(Tool):
         self.hasRandomPart = hasRandomPart
 
     def run(self):
-        if self.hasRandomPart:
-            path = tempfile.mkdtemp(prefix=self.prefix, dir="./")
-        else:
-            if not os.path.exists(self.prefix):
-                os.makedirs(self.prefix)
-            path = self.prefix
-        logging.debug("cd to %s" % (path))
-        os.chdir(path)
-        self.config["path"] = path
-
+        makeAndCdTempDir(
+            self,
+            dir="./",
+            prefix = self.prefix,
+            hasRandomPart = hasRandomPart,
+            pathTo = "/path")
 
 class SearchFilesNames(Tool):
     def __init__(self):

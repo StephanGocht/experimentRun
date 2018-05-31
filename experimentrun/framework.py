@@ -40,13 +40,15 @@ class Metadata(object):
         self.config = config
         self.registration = list()
         self.exceptionHandler = list()
+        self.context = tools.Tool()
+        self.context.setup(self)
 
     def loadAndRunTool(self, className, parameter):
         klass = locate(className)
         instance = None
         if (klass is None):
-            logging.debug(sys.path)
-            sys.exit("Failed to load class %s."
+            logging.debug("sys.path = " + str(sys.path))
+            sys.exit("Failed to load %s."
                      % (className))
 
         if not inspect.isclass(klass):
@@ -54,11 +56,11 @@ class Metadata(object):
                 try:
                     if parameter is None:
                         print(klass.__name__)
-                        klass(self)
+                        klass(self.context)
                     elif isinstance(parameter, tuple):
-                        klass(self,*parameter)
+                        klass(self.context,*parameter)
                     elif isinstance(parameter, dict):
-                        klass(self,**parameter)
+                        klass(self.context,**parameter)
                     else:
                         raise TypeError(
                             "For parameter 'parameter': Expected %s or %s but got %s" %
@@ -118,10 +120,18 @@ class Metadata(object):
                     parameter = None
                 else:
                     parameterString = '({},)'.format(parameterString)
-                    parameter = ast.literal_eval(parameterString)
+                    try:
+                        parameter = ast.literal_eval(parameterString)
+                    except ValueError as e:
+                        logging.error("Malformed parameter string, the following should be valid python code: %s"%parameterString )
+                        raise e
             elif parameterType == '{':
                 parameterString = '{%s}' % (parameterString)
-                parameter = ast.literal_eval(parameterString)
+                try:
+                    parameter = ast.literal_eval(parameterString)
+                except ValueError as e:
+                    logging.error("Malformed parameter string, the following should be valid python code: %s"%parameterString )
+
 
             self.loadAndRunTool(className, parameter)
         else:

@@ -45,7 +45,12 @@ def main():
     sys.path.extend(framework.includes)
     config = framework.loadJson(args.json)
     config[json_names.exrunConfDir.text] = str(os.path.dirname(args.json))
-    framework.bootstrap(config)
+    try:
+        framework.bootstrap(config)
+    except Exception as e:
+        logging.warn("Ups, it seems like something went wrong. Pleas check the error output, if it doesn't help you can use -d to get debug output including a trace.")
+        if (args.loglevel == logging.DEBUG):
+            raise e
 
 
 if __name__ == "__main__":

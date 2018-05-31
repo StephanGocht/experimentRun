@@ -20,6 +20,7 @@ setuptools.setup(
     install_requires=[
         "jsonpointer",
         "Pyro4",
-	"psutil"
+	   "psutil",
+       "pymysql"
     ]
 )
