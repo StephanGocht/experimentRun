@@ -2,3 +2,4 @@ experimentrun.egg-info
 experimentrun.sublime-project
 experimentrun.sublime-workspace
 */__pycache__
+*.pyc
