@@ -29,3 +29,11 @@ linkFile = JsonName(
     r"%linkFile",
     r'This is used to indicate you want the json of another file in here.'
     r'Usage: "YourProperty": {"%linkFile":"/os/path/to/value"}')
+
+exrunConfDir = JsonName(
+    r"EXRUN_CONF_DIR",
+    r"""This is a value in the json that is supposed to be set by bootstrapping
+        process and is used as a string replacement to get the directory of the
+        initial configuration file.
+        Usage: "YourProperty":"some text of yours ${/EXRUN_CONF_DIR}"
+    """)

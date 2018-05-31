@@ -19,6 +19,7 @@ setuptools.setup(
     },
     install_requires=[
         "jsonpointer",
-        "Pyro4"
+        "Pyro4",
+	"psutil"
     ]
 )
