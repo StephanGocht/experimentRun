@@ -4,6 +4,7 @@ import sys
 import os
 import logging
 from experimentrun import framework
+from experimentrun import json_names
 
 
 configTemplate = """
@@ -32,8 +33,8 @@ def main():
         help="Json file containing the database configurations, use -t to get a template.",
         nargs='?')
     parser.add_argument(
-        "-b", "--batchmode", action="store_true", default=False,
-        help="Run in batchmode, i.e. ignore errors with loaded configs.")
+        "-b", "--batchmode", action="store_false", default=True,
+        help="Disables batchmode, i.e. no longer ignores errors with loaded configs.")
     parser.add_argument(
         "-t", "--template", action="store_true", default=False,
         help="Display a template of the json used for configuration.")
@@ -73,7 +74,7 @@ def main():
     config = framework.loadJson(args.json)
     service = DBService.fromConfig(config)
     dispatcher = MysqlWorklistDispatcher(service)
-    dispatcher.run()
+    dispatcher.run(batchmode = args.batchmode)
 
     # service.addItem("abisko", "/home/asdf.json")
     # work = service.aquireWorkItem("abisko")
@@ -133,7 +134,6 @@ class DBService:
 
     def aquireWorkItem(self):
         with self.connection.cursor() as cursor:
-            print(selectQuery(self.prefix))
             cursor.execute(
                 selectQuery(self.prefix),
                 {'workgroup': self.workgroup})
@@ -159,10 +159,10 @@ class DBService:
             self.connection.commit()
 
 class MysqlWorklistDispatcher:
-    def __init__(self, dbservice, batchmode = True):
+    def __init__(self, dbservice):
         self.service = dbservice
 
-    def run(self):
+    def run(self, batchmode = True):
         while True:
             item = self.service.aquireWorkItem()
             if item == None:

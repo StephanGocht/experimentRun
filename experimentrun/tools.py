@@ -8,6 +8,7 @@ import traceback
 
 import tempfile
 import os
+import signal
 import re
 import random
 
@@ -95,6 +96,8 @@ class Tool(object):
     def access(self, accessorString, createMissing=False):
         """Gets data from json using a jsonpointer.
            Array and Array element creation is not jey supported"""
+        if accessorString == "/":
+            return self.config
         if isinstance(accessorString, jsonpointer.JsonPointer):
             pointer = accessorString
         else:
@@ -173,6 +176,9 @@ class PrintExplodedJsons(Tool):
 
     def run(self):
         print(json.dumps(framework.explodeConfig(self.config), indent=4))
+
+def explode(context, path = "/"):
+    context.setValue(path, framework.explodeConfig(context.getValue(path)))
 
 class PrintCurrentJson(Tool):
     def __init__(self):
@@ -511,6 +517,10 @@ class RunShell(Tool):
                     "Warning: Invalid resource limit",
                     key, "will be ignored.")
 
+    def preexec_fn(self):
+        self.setLimits()
+        os.setsid()
+
     def run(self):
         self.wrtieConfig.run()
         self.loadLimits()
@@ -523,7 +533,7 @@ class RunShell(Tool):
         process = subprocess.Popen(
             "exec " + commandString,
             shell=True,
-            preexec_fn=self.setLimits,
+            preexec_fn=self.preexec_fn,
             executable='/bin/bash')
 
         try:
@@ -537,7 +547,8 @@ class RunShell(Tool):
             try:
                 process.wait(timeout)
             except subprocess.TimeoutExpired:
-                process.kill()
+                # process.kill()
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                 process.wait()
 
         info = resource.getrusage(resource.RUSAGE_CHILDREN)

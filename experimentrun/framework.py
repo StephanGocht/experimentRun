@@ -55,7 +55,6 @@ class Metadata(object):
             if callable(klass):
                 try:
                     if parameter is None:
-                        print(klass.__name__)
                         klass(self.context)
                     elif isinstance(parameter, tuple):
                         klass(self.context,*parameter)
