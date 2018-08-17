@@ -4,14 +4,29 @@ import ast
 import json
 import logging
 import inspect
+import os
 from enum import Enum
 from pydoc import locate
 from copy import deepcopy
+from copy import copy
 
 from . import tools
 from . import json_names
 
 includes = list()
+
+
+def exrun(file, toIncludes):
+    global includes
+    includes.append(os.path.dirname(file))
+    for include in toIncludes:
+        includes.append(os.path.abspath(include))
+
+    sys.path.extend(includes)
+    config = loadJson(file)
+    config[json_names.exrunConfDir.text] = str(os.path.dirname(file))
+
+    bootstrap(config)
 
 
 def removeComments(text):
@@ -183,10 +198,9 @@ def _createExploadedCopies(exploadedSubEntries, config):
         exploadedResult = list()
         for value in valueList:
             for config in result:
-                copy = deepcopy(config)
-                copy[key] = deepcopy(value)
-                exploadedResult.append(copy)
-
+                cop = copy(config)
+                cop[key] = value
+                exploadedResult.append(cop)
         result = exploadedResult
 
     return result
@@ -235,4 +249,4 @@ def explodeConfig(config, explodeString=json_names.explode.text):
     if (state == ExploadState.normal):
         confs = list([confs])
 
-    return confs
+    return [deepcopy(conf) for conf in confs]

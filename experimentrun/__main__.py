@@ -15,9 +15,6 @@ def main():
         "json",
         help="Json file containing the benchmark configurations.")
     parser.add_argument(
-        "-c", "--check", action="store_true", default=False,
-        help="check the provided json file")
-    parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
         action="store_const", dest="loglevel", const=logging.DEBUG,
@@ -38,15 +35,8 @@ def main():
 
     logging.basicConfig(level=args.loglevel)
 
-    framework.includes.append(os.path.dirname(args.json))
-    for include in args.include:
-        framework.includes.append(os.path.abspath(include))
-
-    sys.path.extend(framework.includes)
-    config = framework.loadJson(args.json)
-    config[json_names.exrunConfDir.text] = str(os.path.dirname(args.json))
     try:
-        framework.bootstrap(config)
+        framework.exrun(args.json, args.include)
     except Exception as e:
         logging.warn("Ups, it seems like something went wrong. Pleas check the error output, if it doesn't help you can use -d to get debug output including a trace.")
         if (args.loglevel == logging.DEBUG):
