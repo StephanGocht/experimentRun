@@ -24,9 +24,8 @@ def exrun(file, toIncludes):
 
     sys.path.extend(includes)
     config = loadJson(file)
-    config[json_names.exrunConfDir.text] = str(os.path.dirname(file))
 
-    bootstrap(config)
+    bootstrap(config, str(os.path.dirname(file)))
 
 
 def removeComments(text):
@@ -170,7 +169,9 @@ class Metadata(object):
         self.runConstructorList(self.config.get("tools", list()))
 
 
-def bootstrap(config):
+def bootstrap(config, configPath):
+    config[json_names.exrunConfDir.text] = configPath
+
     metadata = Metadata(config)
     try:
         metadata.runAllTools()

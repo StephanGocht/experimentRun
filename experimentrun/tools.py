@@ -78,17 +78,27 @@ class Tool(object):
                 doc = doc[part]
         doc[parts[-1]] = value
 
-    def deleteEntry(self, accessorString):
+    def deleteEntry(self, accessorString, ignoreNonExisting=True):
         pointer = jsonpointer.JsonPointer(accessorString)
         doc = self.config
         parts = pointer.parts
         for part in parts[:-1]:
             try:
                 doc = pointer.walk(doc, part)
-            except jsonpointer.JsonPointerException:
-                doc[part] = dict()
-                doc = doc[part]
-        del doc[parts[-1]]
+            except jsonpointer.JsonPointerException as e:
+                if ignoreNonExisting:
+                    return
+                else:
+                    raise e
+
+        try:
+            del doc[parts[-1]]
+        except IndexError:
+            if not ignoreNonExisting:
+                raise JsonPointerException("index '%s' is out of bounds" % (parts[-1], ))
+        except KeyError:
+            if not ignoreNonExisting:
+                raise JsonPointerException("member '%s' not found in %s" % (parts[-1], doc))
 
     def getValue(self, accessorString, createMissing=False):
         return self.access(accessorString, createMissing)
@@ -414,9 +424,9 @@ class ExplodeNBootstrap(Tool):
             process.cpu_affinity([processorId])
             print("initialized process")
 
-    def doWork(config, cwd):
+    def doWork(config, cwd, configPath):
         os.chdir(cwd)
-        return framework.bootstrap(config)
+        return framework.bootstrap(config, configPath)
 
     def run(self):
         logging.info("Using processors %s." % (str(self.processors)))
@@ -438,7 +448,7 @@ class ExplodeNBootstrap(Tool):
 
             if not self.parallel:
                 runResults.extend([
-                    ExplodeNBootstrap.doWork(conf, cwd)
+                    ExplodeNBootstrap.doWork(conf, cwd, self.config[json_names.exrunConfDir.text])
                     for conf in confs])
             else:
                 if self.cluster:
@@ -465,7 +475,7 @@ class ExplodeNBootstrap(Tool):
                         initargs=(queue,))
                     runResults.extend(p.starmap(
                         ExplodeNBootstrap.doWork,
-                        [(conf, cwd) for conf in confs]))
+                        [(conf, cwd, self.config[json_names.exrunConfDir.text]) for conf in confs]))
 
             # reset working directory
             os.chdir(cwd)
