@@ -11,6 +11,7 @@ import os
 import signal
 import re
 import random
+import sys
 
 import jsonpointer
 
@@ -485,7 +486,6 @@ class ExplodeNBootstrap(Tool):
 class NonZeroExitCodeException(Exception):
     pass
 
-
 class RunShell(Tool):
     def __init__(self, command, runInfoTo=None,
                  limitsConfig=json_names.limitsConfig.text,
@@ -540,8 +540,13 @@ class RunShell(Tool):
 
         commandString = self.substitute(self.command)
         logging.info('RunShell: %s', commandString)
+        ## for some reason I prepended exec to the command string, maybe I wanted
+        ## to prevent a subprocess for successfull kiling after timeout? But that is
+        ## fixed now anyway. I will remove the exec as it hinders when using bash tricks
+        ## like (head;tail) < file.txt
+        # commandString = "exec " + commandString
         process = subprocess.Popen(
-            "exec " + commandString,
+            commandString,
             shell=True,
             preexec_fn=self.preexec_fn,
             executable='/bin/bash')
@@ -615,7 +620,7 @@ def makeAndCdNestedTempDir(context, root, depth = 3, pathTo = "/path"):
     for i in range(depth):
         nesting.append(chr(ord('a') + random.randrange(charrange + 1)))
 
-    root = os.path.abspath(root)
+    root = os.path.abspath(context.substitute(root))
     path = os.path.join(root, *nesting)
     os.makedirs(path, exist_ok = True)
 
@@ -632,9 +637,16 @@ class MakeAndCdTempDir(Tool):
             self,
             dir="./",
             prefix = self.prefix,
-            hasRandomPart = hasRandomPart,
+            hasRandomPart = self.hasRandomPart,
             pathTo = "/path")
 
 class SearchFilesNames(Tool):
     def __init__(self):
         super().__init__()
+
+def addInclude(context, include):
+    include = context.substitute(include)
+    include = os.path.abspath(include)
+
+    framework.includes.append(include)
+    sys.path.append(include)

@@ -16,16 +16,17 @@ from . import json_names
 includes = list()
 
 
-def exrun(file, toIncludes):
+def exrun(file, toIncludes = []):
     global includes
-    includes.append(os.path.dirname(file))
+    configDir = os.path.abspath(os.path.dirname(file))
+    includes.append(configDir)
     for include in toIncludes:
         includes.append(os.path.abspath(include))
 
     sys.path.extend(includes)
     config = loadJson(file)
 
-    bootstrap(config, str(os.path.dirname(file)))
+    bootstrap(config, str(configDir))
 
 
 def removeComments(text):
@@ -120,6 +121,11 @@ class Metadata(object):
                 if not handled:
                     raise
 
+    def loadAndRunToolFromDict(self, constructor):
+        self.loadAndRunTool(
+            constructor["name"],
+            constructor["parameters"])
+
     def loadAndRunToolFromString(self, classString):
         match = re.match(r"([^\(\{]*)(([\{\(])(.*)[\)\}])?\s*$", classString)
 
@@ -150,20 +156,22 @@ class Metadata(object):
         else:
             sys.exit("Failed parse class (value: %s)." % (classString))
 
+    def run(self, constructor):
+        if isinstance(constructor, list):
+            self.runConstructorList(constructor)
+        elif constructor is not None:
+            logging.debug('Load and running tool: %s', constructor)
+            if isinstance(constructor, str):
+                self.loadAndRunToolFromString(constructor)
+            else:
+                self.loadAndRunToolFromDict(constructor)
+
+
     def runConstructorList(self, constructorList):
         while (len(constructorList) > 0):
             constructor = constructorList.pop(0)
 
-            if isinstance(constructor, list):
-                self.runConstructorList(constructor)
-            elif constructor is not None:
-                logging.debug('Load and running tool: %s', constructor)
-                if isinstance(constructor, str):
-                    self.loadAndRunToolFromString(constructor)
-                else:
-                    self.loadAndRunTool(
-                        constructor["name"],
-                        constructor["parameters"])
+            self.run(constructor)
 
     def runAllTools(self):
         self.runConstructorList(self.config.get("tools", list()))

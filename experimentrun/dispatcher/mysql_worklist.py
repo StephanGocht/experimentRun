@@ -5,6 +5,7 @@ import os
 import logging
 from experimentrun import framework
 from experimentrun import json_names
+from copy import copy
 
 
 configTemplate = """
@@ -170,19 +171,22 @@ class MysqlWorklistDispatcher:
 
             path = item["config_file"]
             dirname = os.path.dirname(path)
+
+            origSysPath = copy(sys.path)
+            origIncludes = copy(framework.includes)
             framework.includes.append(dirname)
             sys.path.append(dirname)
 
             try:
                 config = framework.loadJson(path)
                 config[json_names.exrunConfDir.text] = str(dirname)
-                framework.bootstrap(config)
+                framework.bootstrap(config, path)
             except Exception as e:
                 if not batchmode:
                     raise e
 
-            framework.includes.remove(dirname)
-            sys.path.remove(dirname)
+            framework.includes = origIncludes
+            sys.path = origSysPath
 
             self.service.doneWorkItem(item["id"])
 
