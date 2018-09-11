@@ -3,6 +3,8 @@ import argparse
 import sys
 import os
 import logging
+import traceback
+import time
 from experimentrun import framework
 from experimentrun import json_names
 from copy import copy
@@ -112,6 +114,34 @@ def doneQuery(prefix):
             WHERE id = %(id)s;
         """.format((prefix))
 
+def errorQuery(prefix):
+    return  """
+            UPDATE `{}worklist`
+            SET state = 'error'
+            WHERE id = %(id)s;
+        """.format((prefix))
+
+def retry(func):
+    def func_wrapper(*args, **kwargs):
+        service = args[0]
+
+        if service.credentials is not None:
+            try:
+                return func(*args, **kwargs)
+            except pymysql.err.Error:
+                pass
+
+            # Did you try closing and opening the connection again?
+            if service.connection.open:
+                service.connection.close()
+            service.connection = pymysql.connect(
+                cursorclass=pymysql.cursors.DictCursor,
+                **service.credentials)
+
+        return func(*args, **kwargs)
+
+    return func_wrapper
+
 class DBService:
     @classmethod
     def fromConfig(cls, config):
@@ -119,13 +149,15 @@ class DBService:
             cursorclass=pymysql.cursors.DictCursor,
             **config["server"])
 
-        return cls(connection, config["prefix"], config["workgroup"])
+        return cls(connection, config["prefix"], config["workgroup"], config["server"])
 
-    def __init__(self, connection, prefix, workgroup):
+    def __init__(self, connection, prefix, workgroup, credentials = None):
         self.connection = connection
         self.prefix = prefix
         self.workgroup = workgroup
+        self.credentials = credentials
 
+    @retry
     def doneWorkItem(self, id):
         with self.connection.cursor() as cursor:
             cursor.execute(
@@ -133,6 +165,15 @@ class DBService:
                 {'id': id})
             self.connection.commit()
 
+    @retry
+    def errorWorkItem(self, id):
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                errorQuery(self.prefix),
+                {'id': id})
+            self.connection.commit()
+
+    @retry
     def aquireWorkItem(self):
         with self.connection.cursor() as cursor:
             cursor.execute(
@@ -152,6 +193,7 @@ class DBService:
 
             return result
 
+    @retry
     def addItem(self, config_file):
         with self.connection.cursor() as cursor:
             cursor.execute(
@@ -177,18 +219,24 @@ class MysqlWorklistDispatcher:
             framework.includes.append(dirname)
             sys.path.append(dirname)
 
+            print(path)
             try:
                 config = framework.loadJson(path)
                 config[json_names.exrunConfDir.text] = str(dirname)
                 framework.bootstrap(config, path)
+
+                self.service.doneWorkItem(item["id"])
             except Exception as e:
+                self.service.errorWorkItem(item["id"])
                 if not batchmode:
                     raise e
+                else:
+                    traceback.print_exc()
 
             framework.includes = origIncludes
             sys.path = origSysPath
 
-            self.service.doneWorkItem(item["id"])
+
 
 
 if __name__ == '__main__':
