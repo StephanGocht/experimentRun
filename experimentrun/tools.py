@@ -155,6 +155,8 @@ class ExceptionHandler(Tool):
            reraised."""
         return False
 
+class BlockedExceptionDuringRun(Exception):
+    pass
 
 class ExceptionToConfigAndCancelToolExecution(ExceptionHandler):
     def __init__(self, filename=None):
@@ -178,7 +180,7 @@ class ExceptionToConfigAndCancelToolExecution(ExceptionHandler):
             with open(self.filename, 'w') as jsonFile:
                 json.dump(self.config, jsonFile, indent=4)
 
-        return True
+        raise BlockedExceptionDuringRun()
 
 
 class PrintExplodedJsons(Tool):
