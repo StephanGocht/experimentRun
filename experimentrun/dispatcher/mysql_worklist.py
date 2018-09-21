@@ -5,7 +5,11 @@ import os
 import logging
 import traceback
 import time
+import random
+import socket
+from contextlib import closing
 from experimentrun import framework
+from experimentrun.tools import BlockedExceptionDuringRun
 from experimentrun import json_names
 from copy import copy
 
@@ -75,8 +79,7 @@ def main():
     sys.path.extend(framework.includes)
 
     config = framework.loadJson(args.json)
-    service = DBService.fromConfig(config)
-    dispatcher = MysqlWorklistDispatcher(service)
+    dispatcher = MysqlWorklistDispatcher(config)
     dispatcher.run(batchmode = args.batchmode)
 
     # service.addItem("abisko", "/home/asdf.json")
@@ -121,6 +124,35 @@ def errorQuery(prefix):
             WHERE id = %(id)s;
         """.format((prefix))
 
+def resetQueryByFile(prefix):
+    return  """
+            UPDATE `{}worklist`
+            SET state = 'open'
+            WHERE config_file = %(file)s;
+        """.format((prefix))
+
+
+def openConnection(credentials, batchmode):
+    connection = None
+    tries = 0
+    while (connection is None):
+        try:
+            tries += 1
+            connection = pymysql.connect(
+                cursorclass=pymysql.cursors.DictCursor,
+                **credentials)
+        except pymysql.err.Error as e:
+            if (batchmode == False) or (tries > 15):
+                raise
+            else:
+                # lets sleep a random amount, so we most likely prevent
+                # conflicts in the future when hitting the mysql max
+                # connection limit
+                logging.warning("Could not connect to databse ["+str(e)+"]. Trying again.")
+                time.sleep(random.randrange(1,120) / 2)
+
+    return connection
+
 def retry(func):
     def func_wrapper(*args, **kwargs):
         service = args[0]
@@ -134,9 +166,7 @@ def retry(func):
             # Did you try closing and opening the connection again?
             if service.connection.open:
                 service.connection.close()
-            service.connection = pymysql.connect(
-                cursorclass=pymysql.cursors.DictCursor,
-                **service.credentials)
+            service.connection = openConnection(service.credentials, batchmode = True)
 
         return func(*args, **kwargs)
 
@@ -144,18 +174,18 @@ def retry(func):
 
 class DBService:
     @classmethod
-    def fromConfig(cls, config):
-        connection = pymysql.connect(
-            cursorclass=pymysql.cursors.DictCursor,
-            **config["server"])
-
-        return cls(connection, config["prefix"], config["workgroup"], config["server"])
+    def fromConfig(cls, config, batchmode = False):
+        return closing(cls(openConnection(config["server"], batchmode), config["prefix"], config["workgroup"], config["server"]))
 
     def __init__(self, connection, prefix, workgroup, credentials = None):
         self.connection = connection
         self.prefix = prefix
         self.workgroup = workgroup
         self.credentials = credentials
+
+    def close(self):
+        if self.connection.open:
+            self.connection.close()
 
     @retry
     def doneWorkItem(self, id):
@@ -201,16 +231,27 @@ class DBService:
                 {'workgroup': self.workgroup, 'config_file': config_file})
             self.connection.commit()
 
+    @retry
+    def resetWorkItemByFile(self, file):
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                resetQueryByFile(self.prefix),
+                {'file': file})
+            self.connection.commit()
+
 class MysqlWorklistDispatcher:
-    def __init__(self, dbservice):
-        self.service = dbservice
+    def __init__(self, dbconfig):
+        self.dbconfig = dbconfig
 
     def run(self, batchmode = True):
-        while True:
-            item = self.service.aquireWorkItem()
-            if item == None:
-                break
+        print("Running on: " + socket.gethostname())
+        numErrors = 0
 
+        item = None
+        with DBService.fromConfig(self.dbconfig, batchmode) as service:
+            item = service.aquireWorkItem()
+
+        while item != None and numErrors < 30:
             path = item["config_file"]
             dirname = os.path.dirname(path)
 
@@ -219,15 +260,17 @@ class MysqlWorklistDispatcher:
             framework.includes.append(dirname)
             sys.path.append(dirname)
 
-            print(path)
+            print("Working on: %s" % (path))
+
+            error = False
             try:
                 config = framework.loadJson(path)
                 config[json_names.exrunConfDir.text] = str(dirname)
                 framework.bootstrap(config, path)
-
-                self.service.doneWorkItem(item["id"])
+            except BlockedExceptionDuringRun as e:
+                error = True
             except Exception as e:
-                self.service.errorWorkItem(item["id"])
+                error = True
                 if not batchmode:
                     raise e
                 else:
@@ -236,7 +279,17 @@ class MysqlWorklistDispatcher:
             framework.includes = origIncludes
             sys.path = origSysPath
 
+            with DBService.fromConfig(self.dbconfig) as service:
+                if not error:
+                    pass
+                    service.doneWorkItem(item["id"])
+                else:
+                    numErrors += 1
+                    service.errorWorkItem(item["id"])
+                item = service.aquireWorkItem()
 
+        if numErrors > 0:
+            logging.warning("Encountered %i errors in configurations." % (numErrors))
 
 
 if __name__ == '__main__':
