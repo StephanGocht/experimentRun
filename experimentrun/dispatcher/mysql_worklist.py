@@ -177,6 +177,10 @@ class DBService:
     def fromConfig(cls, config, batchmode = False):
         return closing(cls(openConnection(config["server"], batchmode), config["prefix"], config["workgroup"], config["server"]))
 
+    @classmethod
+    def fromConfigNc(cls, config, batchmode = False):
+        return cls(openConnection(config["server"], batchmode), config["prefix"], config["workgroup"], config["server"])
+
     def __init__(self, connection, prefix, workgroup, credentials = None):
         self.connection = connection
         self.prefix = prefix
