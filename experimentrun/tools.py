@@ -363,7 +363,8 @@ class ClusterDispatcher(object):
         lookup = ns.list(metadata_all={"jobdispatcher"})
         for uri in lookup.values():
             proxy = Pyro4.Proxy(uri)
-            Pyro4.async(proxy)
+            # async is a reserved word in 3.7
+            getattr(Pyro4, 'async')(proxy)
             proxy.setIncludes(framework.includes)
             self.aviableDispatchers.add(proxy)
             self.freeDispatchers.append(proxy)
