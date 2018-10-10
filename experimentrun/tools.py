@@ -107,12 +107,12 @@ class Tool(object):
     def access(self, accessorString, createMissing=False):
         """Gets data from json using a jsonpointer.
            Array and Array element creation is not jey supported"""
-        if accessorString == "/":
-            return self.config
         if isinstance(accessorString, jsonpointer.JsonPointer):
             pointer = accessorString
         else:
             pointer = jsonpointer.JsonPointer(accessorString)
+        if (pointer.parts == ['']):
+            return self.config
         if not createMissing:
             try:
                 return pointer.resolve(self.config)
@@ -342,7 +342,7 @@ class ResolveLinks(Tool):
 
     def run(self):
         ptr = jsonpointer.JsonPointer(self.basePtr)
-        if len(ptr.parts) > 0:
+        if len(ptr.parts) > 0 and ptr.parts != ['']:
             last = ptr.parts.pop()
             self.handleKey(self.access(ptr), last)
         else:
