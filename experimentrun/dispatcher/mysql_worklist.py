@@ -255,7 +255,7 @@ class MysqlWorklistDispatcher:
         with DBService.fromConfig(self.dbconfig, batchmode) as service:
             item = service.aquireWorkItem()
 
-        while item != None and numErrors < 30:
+        while item is not None:
             path = item["config_file"]
             dirname = os.path.dirname(path)
 
@@ -290,7 +290,11 @@ class MysqlWorklistDispatcher:
                 else:
                     numErrors += 1
                     service.errorWorkItem(item["id"])
-                item = service.aquireWorkItem()
+
+                if numErrors < 30:
+                    item = service.aquireWorkItem()
+                else:
+                    item = None
 
         if numErrors > 0:
             logging.warning("Encountered %i errors in configurations." % (numErrors))
