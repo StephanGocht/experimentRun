@@ -290,6 +290,8 @@ class MysqlWorklistDispatcher:
                 else:
                     numErrors += 1
                     service.errorWorkItem(item["id"])
+                    # lets rest a bit and see if things look beter after a small pause
+                    time.sleep(10)
 
                 if numErrors < 30:
                     item = service.aquireWorkItem()
