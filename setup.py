@@ -7,7 +7,7 @@ setuptools.setup(
     author="Stephan Gocht",
     author_email="steohan@gobro.de",
     description=("A benchmarking framework."),
-    packages=['experimentrun'],
+    packages=['experimentrun', 'experimentrun.dispatcher'],
     classifiers=[
         'Development Status :: 1 - Planning',
         'License :: OSI Approved :: MIT License'
