@@ -46,6 +46,9 @@ def main():
         "-t", "--template", action="store_true", default=False,
         help="Display a template of the json used for configuration.")
     parser.add_argument(
+        "-c", "--cleanBatch", action="store_true", default=False,
+        help="Clean all entries from the configured batch.")
+    parser.add_argument(
         '-d', '--debug',
         help="Print lots of debugging statements",
         action="store_const", dest="loglevel", const=logging.DEBUG,
@@ -79,6 +82,12 @@ def main():
     sys.path.extend(framework.includes)
 
     config = framework.loadJson(args.json)
+
+    if args.cleanBatch:
+        with DBService.fromConfig(config, args.batchmode) as service:
+            service.cleanItems()
+            exit()
+
     dispatcher = MysqlWorklistDispatcher(config)
     dispatcher.run(batchmode = args.batchmode)
 
@@ -86,6 +95,11 @@ def main():
     # work = service.aquireWorkItem("abisko")
     # service.doneWorkItem(work["id"])
 
+
+def cleanItemsQuery(prefix):
+    return  """
+            DELETE FROM `{}worklist` WHERE workgroup = %(workgroup)s;
+        """.format((prefix))
 
 def addQuery(prefix):
     return  """
@@ -190,6 +204,14 @@ class DBService:
     def close(self):
         if self.connection.open:
             self.connection.close()
+
+    @retry
+    def cleanItems(self):
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                cleanItemsQuery(self.prefix),
+                {'workgroup': self.workgroup})
+            self.connection.commit()
 
     @retry
     def doneWorkItem(self, id):
