@@ -4,5 +4,5 @@ CREATE TABLE `exprun.worklist` (
   `config_file` VARCHAR(255) NULL,
   `hash` BINARY(20) NULL,
   `aquired` TIMESTAMP NULL,
-  `state` ENUM('open', 'processing', 'done') NOT NULL DEFAULT 'open',
+  `state` ENUM('open', 'processing', 'done', 'error') NOT NULL DEFAULT 'open',
   PRIMARY KEY (`id`));
